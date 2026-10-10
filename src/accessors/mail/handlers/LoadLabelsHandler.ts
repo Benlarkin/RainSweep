@@ -7,6 +7,8 @@ import { readLabel } from '../gmail/gmailTypes'
 import { LoadLabelsRequest } from '../MailRequests'
 import { LoadLabelsResponse } from '../MailResponses'
 
+const MAX_COUNTED_LABELS = 40
+
 /** System labels shown in the sidebar, in display order, with friendly names. */
 const SYSTEM_LABELS: ReadonlyArray<[string, string]> = [
   ['INBOX', 'Inbox'],
@@ -36,10 +38,14 @@ export class LoadLabelsHandler implements IHandler<LoadLabelsRequest> {
     ]
 
     // labels.list omits counts; labels.get has them. Fetch a few at a time to
-    // stay inside Gmail's per-user quota.
-    const detailed = await ConcurrencyUtility.mapWithLimit(wanted, 5, async id => {
+    // stay inside Gmail's per-user quota, and only for the first labels so the
+    // request stays under the host's cap on outbound calls (Cloudflare's free
+    // plan allows 50). Labels past that show without counts.
+    const detailed = await ConcurrencyUtility.mapWithLimit(wanted, 5, async (id, index) => {
+      const listed = all.find(l => l.id === id) ?? null
+      if (index >= MAX_COUNTED_LABELS) return listed
       const result = await this.gmail.get(request.accessToken, `/labels/${encodeURIComponent(id)}`)
-      return result.ok ? readLabel(result.data) : all.find(l => l.id === id) ?? null
+      return result.ok ? readLabel(result.data) : listed
     })
 
     const labels: MailLabel[] = detailed

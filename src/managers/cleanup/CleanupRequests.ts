@@ -4,12 +4,16 @@ import type { AnalyzeMailboxResponse, ApplyBulkActionResponse, ScanMailboxRespon
 
 export type ScanScope = 'all' | 'inbox'
 
-/** One page of a metadata scan. The client pages until it has enough or runs out. */
+/**
+ * One page of a metadata scan. The client pages until it has enough or runs out.
+ * Each message is its own Gmail call, and Cloudflare's free plan allows 50
+ * outbound calls per request, so a page stays well under that.
+ */
 export class ScanMailboxRequest extends RequestBase<ScanMailboxResponse> {
   constructor(
     public readonly scope: ScanScope,
     public readonly pageToken: string | null = null,
-    public readonly pageSize: number = 250,
+    public readonly pageSize: number = 40,
   ) { super() }
 }
 

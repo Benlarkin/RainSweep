@@ -1,0 +1,16 @@
+# Static assets are served by Cloudflare before the Worker runs, so the
+# headers() in next.config.ts never reach them. These mirror it.
+# https://developers.cloudflare.com/workers/static-assets/headers
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Service-Worker-Allowed: /

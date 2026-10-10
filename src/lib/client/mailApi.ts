@@ -4,6 +4,8 @@ import type {
 import type { ThreadAction } from '@/managers/mailbox/MailboxRequests'
 import type { DraftMode } from '@/managers/composition/CompositionRequests'
 
+const THREAD_ACTION_CHUNK = 40
+
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number, public readonly code: string) {
     super(message)
@@ -73,11 +75,21 @@ export const mailApi = {
   },
   send: (payload: SendPayload) =>
     request<{ messageId: string; threadId: string }>('/api/send', { method: 'POST', body: JSON.stringify(payload) }),
-  updateThreads: (threadIds: string[], action: ThreadAction) =>
-    request<{ updatedIds: string[]; failedIds: string[] }>('/api/threads/actions', {
-      method: 'POST',
-      body: JSON.stringify({ threadIds, action }),
-    }),
+  updateThreads: async (threadIds: string[], action: ThreadAction) => {
+    // Each thread is one Gmail call on the server, so send them in chunks that
+    // fit the host's per-request cap on outbound calls (50 on Cloudflare free).
+    const updatedIds: string[] = []
+    const failedIds: string[] = []
+    for (let i = 0; i < threadIds.length; i += THREAD_ACTION_CHUNK) {
+      const result = await request<{ updatedIds: string[]; failedIds: string[] }>('/api/threads/actions', {
+        method: 'POST',
+        body: JSON.stringify({ threadIds: threadIds.slice(i, i + THREAD_ACTION_CHUNK), action }),
+      })
+      updatedIds.push(...result.updatedIds)
+      failedIds.push(...result.failedIds)
+    }
+    return { updatedIds, failedIds }
+  },
   signOut: () => request<void>('/api/auth/signout', { method: 'POST' }),
 
   // Cleanup

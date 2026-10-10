@@ -20,7 +20,7 @@ Modeled on [LoreKeeper](https://github.com/Wintaru/LoreKeeper).
 | MIME parsing | `postal-mime` | Used only inside `MessageParsingEngine` |
 | Styling | Tailwind CSS 4 | Light and dark themes from CSS variables |
 | Testing | Vitest | Engines and utilities in isolation; managers through the real container with HTTP faked at the edge; an architecture test enforces the layer rules |
-| Hosting | Vercel (or any Node host) | Zero-config for Next.js |
+| Hosting | Cloudflare Workers via OpenNext (or Vercel, or any Node host) | Free tier covers personal use; one Worker, no storage bindings |
 
 LoreKeeper uses Supabase for shared, real-time game state. A mail client's state lives in Gmail, so this project needs no database yet. Supabase slots in behind `SessionAccessor` (server-side sessions) or a new accessor (push subscriptions, settings) when a feature needs it, with no change to Managers.
 
