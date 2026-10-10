@@ -21,54 +21,62 @@ export function Sidebar(props: SidebarProps) {
   const user = labels.filter(l => l.kind === 'user')
 
   return (
-    <nav aria-label="Mailboxes" className="flex h-full flex-col gap-2 overflow-y-auto p-3">
+    <nav aria-label="Mailboxes" className="flex h-full flex-col gap-6 overflow-y-auto border-r border-border px-5 py-6">
+      <div>
+        <p className="font-display text-[1.65rem] font-bold leading-none tracking-tight">RainSweep</p>
+        <p className="meta mt-1.5">Field guide to your mail</p>
+      </div>
+
       <button type="button" onClick={onCompose}
-        className="mb-2 flex items-center gap-3 rounded-2xl bg-accent px-5 py-3.5 font-medium text-accent-foreground shadow-sm transition hover:opacity-90">
-        <PencilIcon /> Compose
+        className="flex items-center justify-between border-[1.5px] border-foreground bg-letter px-3.5 py-2.5 font-display text-[1.05rem] font-semibold transition hover:bg-surface-muted">
+        <span className="flex items-center gap-2.5"><PencilIcon width={18} height={18} /> Write</span>
+        <kbd className="meta">c</kbd>
       </button>
 
-      <ul className="space-y-0.5">
+      <ul>
         {system.map(label => <LabelItem key={label.id} label={label} active={label.id === currentLabel} onSelect={onSelectLabel} />)}
+        <li>
+          <a href="/cleanup" className="flex items-center gap-2.5 border-b border-dotted border-border py-1.5 text-[1.05rem] hover:text-accent">
+            <BroomIcon width={17} height={17} className="text-muted" /> <span className="flex-1">Sweep</span>
+            <span className="meta">g c</span>
+          </a>
+        </li>
       </ul>
 
-      <a href="/cleanup" className="mt-2 flex items-center gap-3 rounded-r-full px-3 py-1.5 text-sm hover:bg-surface-muted">
-        <BroomIcon width={18} height={18} /> <span className="flex-1">Clean up</span>
-      </a>
-
       {user.length > 0 && (
-        <>
-          <h2 className="mt-4 px-3 text-xs font-semibold uppercase tracking-wide text-muted">Labels</h2>
-          <ul className="space-y-0.5">
+        <div>
+          <h2 className="meta mb-1">Labels</h2>
+          <ul>
             {user.map(label => <LabelItem key={label.id} label={label} active={label.id === currentLabel} onSelect={onSelectLabel} />)}
           </ul>
-        </>
+        </div>
       )}
 
-      <div className="mt-auto space-y-1 border-t border-border pt-3 text-sm">
+      <div className="mt-auto space-y-0.5 border-t-[1.5px] border-foreground pt-3 text-[0.95rem]">
         {props.onEnableNotifications && (
-          <button type="button" onClick={props.onEnableNotifications} className="w-full rounded-lg px-3 py-2 text-left text-muted hover:bg-surface-muted">
+          <button type="button" onClick={props.onEnableNotifications} className="w-full py-1.5 text-left text-muted hover:text-foreground">
             Notify me about new mail
           </button>
         )}
         {props.onMakeDefaultMailApp && (
-          <button type="button" onClick={props.onMakeDefaultMailApp} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-muted hover:bg-surface-muted">
+          <button type="button" onClick={props.onMakeDefaultMailApp} className="flex w-full items-center gap-2 py-1.5 text-left text-muted hover:text-foreground">
             <MailIcon width={16} height={16} /> Open mailto: links here
           </button>
         )}
-        <button type="button" onClick={props.onShowShortcuts} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-muted hover:bg-surface-muted">
+        <button type="button" onClick={props.onShowShortcuts} className="flex w-full items-center gap-2 py-1.5 text-left text-muted hover:text-foreground">
           <KeyboardIcon width={16} height={16} /> Keyboard shortcuts
         </button>
-        <div className="flex items-center gap-3 px-3 py-2">
+        <div className="flex items-center gap-3 py-2">
           {account.pictureUrl
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={account.pictureUrl} alt="" width={32} height={32} className="rounded-full" referrerPolicy="no-referrer" />
-            : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">{(account.name ?? account.email)[0]?.toUpperCase()}</span>}
+            : <span className="flex h-8 w-8 items-center justify-center rounded-full border border-foreground font-display text-sm font-semibold">{(account.name ?? account.email)[0]?.toUpperCase()}</span>}
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium">{account.name ?? account.email}</p>
-            <p className="truncate text-xs text-muted">{account.email}</p>
+            <p className="truncate font-mono text-[0.7rem] text-muted">{account.email}</p>
           </div>
         </div>
-        <button type="button" onClick={props.onSignOut} className="w-full rounded-lg px-3 py-2 text-left text-muted hover:bg-surface-muted">
+        <button type="button" onClick={props.onSignOut} className="w-full py-1 text-left text-muted hover:text-foreground">
           Sign out
         </button>
       </div>
@@ -83,12 +91,14 @@ function LabelItem({ label, active, onSelect }: { label: MailLabel; active: bool
   return (
     <li>
       <button type="button" onClick={() => onSelect(label.id)} aria-current={active ? 'page' : undefined}
-        className={`flex w-full items-center gap-3 rounded-r-full px-3 py-1.5 text-sm transition ${
-          active ? 'bg-selected font-semibold' : 'hover:bg-surface-muted'
+        className={`flex w-full items-center gap-2.5 border-b border-dotted border-border py-1.5 text-left text-[1.05rem] transition hover:text-accent ${
+          active ? 'font-medium italic' : ''
         }`}>
-        <LabelIcon id={label.id} width={18} height={18} />
-        <span className="flex-1 truncate text-left">{label.name}</span>
-        {showCount && <span className={`text-xs ${active ? '' : 'text-muted'} ${label.unreadCount ? 'font-semibold' : ''}`}>{count}</span>}
+        {active
+          ? <span aria-hidden="true" className="w-[17px] text-center font-display text-marker">§</span>
+          : <LabelIcon id={label.id} width={17} height={17} className="text-muted" />}
+        <span className="flex-1 truncate">{label.name}</span>
+        {showCount && <span className={`font-mono text-xs not-italic ${label.unreadCount ? 'text-foreground' : 'text-muted'}`}>{count}</span>}
       </button>
     </li>
   )

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getContainer } from '@/lib/server/container'
 import { GetAccountRequest } from '@/managers/account/AccountRequests'
+import { isDemoMode } from '@/lib/config'
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams
@@ -9,17 +10,18 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   if (account) redirect('/mail')
 
   return (
-    <main className="min-h-full flex items-center justify-center p-6">
-      <div className="w-full max-w-sm space-y-8 text-center">
-        <div className="space-y-3">
+    <main className="flex min-h-full items-center justify-center p-6">
+      <div className="w-full max-w-md space-y-8">
+        <div className="space-y-4 border-b-[1.5px] border-foreground pb-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon.svg" alt="" width={72} height={72} className="mx-auto" />
-          <h1 className="text-3xl font-semibold tracking-tight">RainSweep</h1>
-          <p className="text-muted">A fast, installable client for your Gmail.</p>
+          <img src="/icon.svg" alt="" width={56} height={56} />
+          <p className="meta">A field guide to your mail</p>
+          <h1 className="font-display text-[3.4rem] font-semibold leading-[0.95] tracking-tight">Rain<em className="font-normal">Sweep</em></h1>
+          <p className="text-[1.15rem] leading-relaxed text-muted">Read the people who wrote to you first. Sweep the newsletters, receipts and notifications that pile up around them.</p>
         </div>
 
         {error && (
-          <p role="alert" className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          <p role="alert" className="border-l-4 border-marker bg-letter px-4 py-3 italic">
             {error}
           </p>
         )}
@@ -27,13 +29,16 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         {/* A plain link: the OAuth flow is a full-page redirect, not a fetch. */}
         <a
           href="/api/auth/google/start"
-          className="flex w-full items-center justify-center gap-3 rounded-xl bg-accent px-4 py-3 font-medium text-accent-foreground shadow-sm transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="flex w-full items-center justify-between border-[1.5px] border-foreground bg-letter px-5 py-3.5 font-display text-lg font-semibold transition hover:bg-foreground hover:text-background"
         >
-          Sign in with Google
+          {isDemoMode() ? 'Open the demo mailbox' : 'Sign in with Google'}
+          <span aria-hidden="true">→</span>
         </a>
 
-        <p className="text-xs text-muted">
-          Your mail stays in Gmail. This app keeps only an encrypted session cookie in your browser.
+        <p className="text-[0.95rem] italic text-muted">
+          {isDemoMode()
+            ? 'Demo mode: a made-up mailbox that resets when the server restarts. Nothing touches Gmail.'
+            : 'Your mail stays in Gmail. This app keeps only an encrypted session cookie in your browser.'}
         </p>
       </div>
     </main>

@@ -1,29 +1,38 @@
 @import "tailwindcss";
 
+/*
+ * Field Guide: mail as correspondence. Warm paper and green-black ink by day,
+ * a dark desk at night. Letters (message cards, dialogs) sit on the page as
+ * sheets; moss marks what is new, rust marks where you are.
+ */
 :root {
-  --background: #f8fafc;
-  --surface: #ffffff;
-  --surface-muted: #f1f5f9;
-  --foreground: #0f172a;
-  --muted: #64748b;
-  --border: #e2e8f0;
-  --accent: #2563eb;
-  --accent-foreground: #ffffff;
-  --selected: #dbeafe;
+  --background: #f3eee2;      /* the page */
+  --surface: #f7f3ea;         /* the list column */
+  --surface-muted: #ebe4d3;   /* hover, quiet fills */
+  --letter: #fcfaf4;          /* a sheet: message cards, dialogs */
+  --foreground: #1f2a24;      /* ink */
+  --muted: #66655a;
+  --border: #d8cfba;          /* ruled lines */
+  --accent: #3d6b4c;          /* moss: unread, primary actions */
+  --accent-foreground: #fbf8f0;
+  --marker: #b4532a;          /* rust: the open conversation, drop caps */
+  --selected: #e8dfca;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0b1120;
-    --surface: #111827;
-    --surface-muted: #1f2937;
-    --foreground: #e5e7eb;
-    --muted: #9ca3af;
-    --border: #1f2937;
-    --accent: #3b82f6;
-    --accent-foreground: #ffffff;
-    --selected: #1e3a8a;
+    --background: #151a16;
+    --surface: #1a201b;
+    --surface-muted: #242c25;
+    --letter: #1f2620;
+    --foreground: #e8e2d2;
+    --muted: #9c9a88;
+    --border: #2f3830;
+    --accent: #93c29c;
+    --accent-foreground: #141a15;
+    --marker: #e08b5f;
+    --selected: #283229;
     color-scheme: dark;
   }
 }
@@ -32,14 +41,17 @@
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
+  --color-letter: var(--letter);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-marker: var(--marker);
   --color-selected: var(--selected);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-serif: var(--font-newsreader), Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
 
 html, body {
@@ -49,7 +61,31 @@ html, body {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-optical-sizing: auto;
+}
+
+/* Small uppercase mono labels: dates, counts, section names. */
+@utility meta {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Text inputs and selects share one quiet, ruled look. */
+@utility field {
+  border: 1px solid var(--border);
+  background: var(--letter);
+  color: var(--foreground);
+  border-radius: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--marker);
+  outline-offset: 2px;
 }
 
 /* Respect the OS-level reduced motion setting everywhere. */

@@ -3,7 +3,7 @@ import { getContainer } from '@/lib/server/container'
 import { GetAccountRequest } from '@/managers/account/AccountRequests'
 import { CleanupApp } from '@/components/cleanup/CleanupApp'
 
-export const metadata = { title: 'Clean up · RainSweep' }
+export const metadata = { title: 'Sweep · RainSweep' }
 
 export default async function CleanupPage() {
   const { accountManager } = await getContainer()

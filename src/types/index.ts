@@ -27,6 +27,8 @@ export interface ThreadSummary {
   unread: boolean
   starred: boolean
   labelIds: string[]
+  /** Sent by a mailing list, newsletter or other bulk sender rather than a person. */
+  fromMailingList: boolean
 }
 
 export interface ThreadPage {

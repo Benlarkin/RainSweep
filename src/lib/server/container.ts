@@ -2,7 +2,8 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import type { CookieJar } from '@/accessors/session/CookieJar'
 import { createContainer, type Container } from '@/container/DependencyContainer'
-import { getConfig } from '@/lib/config'
+import { getConfig, isDemoMode } from '@/lib/config'
+import { demoFetch } from './demo/demoGoogle'
 
 /**
  * Builds the container for the current request. The cookie jar is bound to
@@ -16,5 +17,5 @@ export async function getContainer(): Promise<Container> {
     set: (name, value, options) => { store.set(name, value, options) },
     delete: name => { store.delete(name) },
   }
-  return createContainer({ config: getConfig(), cookies: jar })
+  return createContainer({ config: getConfig(), cookies: jar, ...(isDemoMode() ? { fetchFn: demoFetch } : {}) })
 }

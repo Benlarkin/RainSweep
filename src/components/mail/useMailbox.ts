@@ -83,16 +83,21 @@ export function useMailbox(initialView: MailView, notify: (message: string, undo
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
+  // The URL write is a side effect, so it can't live inside a setState updater
+  // (React may run updaters during render). Track the latest view in a ref.
+  const viewRef = useRef(initialView)
   const navigate = useCallback((next: Partial<MailView>, mode: 'push' | 'replace' = 'push') => {
-    setView(prev => {
-      const merged = { ...prev, ...next }
-      writeViewToUrl(merged, mode)
-      return merged
-    })
+    const merged = { ...viewRef.current, ...next }
+    viewRef.current = merged
+    writeViewToUrl(merged, mode)
+    setView(merged)
   }, [])
 
   useEffect(() => {
-    const onPop = () => setView(readViewFromUrl())
+    const onPop = () => {
+      viewRef.current = readViewFromUrl()
+      setView(viewRef.current)
+    }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
@@ -297,7 +302,8 @@ export function useMailbox(initialView: MailView, notify: (message: string, undo
       return next
     })
   }, [])
-  const selectAll = useCallback(() => setSelected(new Set(list.threads.map(t => t.id))), [list.threads])
+  // The inbox can hide some conversations (the folded sweep tray), so callers pass what is visible.
+  const selectAll = useCallback((ids: string[] = list.threads.map(t => t.id)) => setSelected(new Set(ids)), [list.threads])
   const clearSelection = useCallback(() => setSelected(new Set()), [])
 
   return {

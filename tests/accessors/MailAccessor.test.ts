@@ -41,6 +41,23 @@ describe('MailAccessor (Gmail)', () => {
       lastMessageAt: new Date(1700000600000).toISOString(),
     })
     expect(page?.threads[0].participants.map(p => p.name)).toEqual(['Alice', 'Bob B'])
+    expect(page?.threads[0].fromMailingList).toBe(false)
+  })
+
+  it('marks threads from mailing lists so the inbox can put people first', async () => {
+    const { fn } = fakeFetch([
+      [/\/threads\?/, () => ({ threads: [{ id: 't1' }] })],
+      [/\/threads\/t1\?/, () => ({
+        id: 't1',
+        messages: [{ id: 'm1', labelIds: ['INBOX'], internalDate: '0', payload: { headers: [
+          { name: 'From', value: 'News <news@x.com>' },
+          { name: 'List-Unsubscribe', value: '<https://x.com/u>' },
+        ] } }],
+      })],
+    ])
+    const { page } = await new LoadThreadPageHandler(new GmailClient(fn))
+      .handle(new LoadThreadPageRequest('token', { labelId: 'INBOX', search: '', pageToken: null, pageSize: 25 }))
+    expect(page?.threads[0].fromMailingList).toBe(true)
   })
 
   it('loads a thread as raw MIME messages', async () => {

@@ -29,8 +29,11 @@ function HtmlBody({ html }: { html: string }) {
 <meta http-equiv="Content-Security-Policy" content="${csp}">
 <base target="_blank">
 <style>
-  html,body{margin:0;padding:0;background:#fff;color:#111;font:14px/1.5 system-ui,sans-serif;overflow-wrap:anywhere}
+  html,body{margin:0;padding:0;background:#fcfaf4;color:#1f2a24;font:16px/1.6 Georgia,'Iowan Old Style',serif;overflow-wrap:anywhere}
   body{padding:4px 2px}
+  a{color:#3d6b4c}
+  /* At night the letter stays paper: a lit sheet on a dark desk. */
+  @media (prefers-color-scheme: dark){body{padding:18px 20px}}
   img{max-width:100%;height:auto}
   table{max-width:100%}
   pre{white-space:pre-wrap}
@@ -63,9 +66,9 @@ function HtmlBody({ html }: { html: string }) {
   return (
     <div>
       {hasRemote && !showRemote && (
-        <div className="mb-2 flex items-center justify-between gap-3 rounded-lg bg-surface-muted px-3 py-2 text-xs text-muted">
-          <span>Remote images are hidden to protect your privacy.</span>
-          <button type="button" className="font-medium text-accent hover:underline" onClick={() => setShowRemote(true)}>Show images</button>
+        <div className="mb-3 flex items-center justify-between gap-3 border-y border-dotted border-border py-1.5 text-[0.92rem] italic text-muted">
+          <span>Pictures are held back so senders can’t tell you opened this.</span>
+          <button type="button" className="meta not-italic text-accent hover:text-foreground" onClick={() => setShowRemote(true)}>Show pictures</button>
         </div>
       )}
       <iframe
@@ -75,7 +78,7 @@ function HtmlBody({ html }: { html: string }) {
         referrerPolicy="no-referrer"
         srcDoc={srcDoc}
         style={{ height }}
-        className="w-full rounded-lg border border-border bg-white"
+        className="w-full bg-[#fcfaf4] dark:border dark:border-border"
       />
     </div>
   )
@@ -86,7 +89,7 @@ const URL_PATTERN = /(https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]])/g
 function TextBody({ text }: { text: string }) {
   const parts = text.split(URL_PATTERN)
   return (
-    <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+    <div className="whitespace-pre-wrap break-words text-[1.08rem] leading-[1.65]">
       {parts.map((part, i) =>
         i % 2 === 1
           ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-accent underline">{part}</a>

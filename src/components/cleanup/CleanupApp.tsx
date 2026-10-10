@@ -85,29 +85,30 @@ export function CleanupApp({ account }: { account: Account }) {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
-        <a href="/mail" aria-label="Back to mail" className="rounded-full p-2 hover:bg-surface-muted"><BackIcon /></a>
-        <BroomIcon />
-        <h1 className="text-lg font-semibold">Clean up</h1>
-        <span className="text-sm text-muted">{account.email}</span>
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b-[1.5px] border-foreground px-4 py-4 md:px-8">
+        <a href="/mail" aria-label="Back to mail" className="-ml-1 p-1 text-muted hover:text-foreground"><BackIcon /></a>
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2.5 font-display text-[1.9rem] font-semibold leading-none tracking-tight"><BroomIcon width={22} height={22} className="text-marker" /> Sweep</h1>
+          <p className="meta mt-1.5 truncate">Who fills the mailbox of {account.email}</p>
+        </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-2 text-sm">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           <select aria-label="What to scan" value={scope} disabled={scanning}
             onChange={e => setScopeChoice(e.target.value as Scope)}
-            className="rounded border border-border bg-surface px-2 py-1.5">
+            className="field px-2 py-1.5">
             <option value="all">All mail</option>
             <option value="inbox">Inbox only</option>
           </select>
           <select aria-label="How many messages" value={limit} disabled={scanning}
             onChange={e => setLimit(Number(e.target.value))}
-            className="rounded border border-border bg-surface px-2 py-1.5">
+            className="field px-2 py-1.5">
             {LIMITS.map(n => <option key={n} value={n}>Newest {n.toLocaleString()}</option>)}
           </select>
           {scanning ? (
-            <button type="button" onClick={cleanup.stopScan} className="rounded-full border border-border px-4 py-1.5">Stop</button>
+            <button type="button" onClick={cleanup.stopScan} className="border border-foreground px-4 py-1.5 font-mono text-xs uppercase tracking-[0.08em]">Stop</button>
           ) : (
             <button type="button" onClick={() => void cleanup.scan(scope, limit)}
-              className="rounded-full bg-accent px-4 py-1.5 font-medium text-accent-foreground">
+              className="bg-foreground px-4 py-2 font-mono text-xs uppercase tracking-[0.08em] text-background transition hover:opacity-85">
               {cleanup.messages.length > 0 ? 'Rescan' : 'Scan my mail'}
             </button>
           )}
@@ -115,56 +116,56 @@ export function CleanupApp({ account }: { account: Account }) {
       </header>
 
       {progress && (
-        <div className="border-b border-border px-4 py-2 text-sm">
-          <div className="mb-1 text-muted">Reading {progress.scanned.toLocaleString()} of about {progress.limit.toLocaleString()} messages…</div>
-          <div className="h-1.5 rounded-full bg-surface-muted">
-            <div className="h-1.5 rounded-full bg-accent transition-all"
+        <div className="border-b border-border px-4 py-3 md:px-8">
+          <div className="mb-1.5 italic text-muted">Reading {progress.scanned.toLocaleString()} of about {progress.limit.toLocaleString()} messages…</div>
+          <div className="h-1.5 bg-surface-muted">
+            <div className="h-1.5 bg-accent transition-all"
               style={{ width: `${progress.limit ? Math.min(100, (progress.scanned / progress.limit) * 100) : 0}%` }} />
           </div>
         </div>
       )}
 
-      {cleanup.error && <p role="alert" className="border-b border-border bg-red-50 px-4 py-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">{cleanup.error}</p>}
+      {cleanup.error && <p role="alert" className="border-b border-border px-4 py-2 italic text-marker md:px-8">{cleanup.error}</p>}
 
       {!cleanup.restored ? null : cleanup.messages.length === 0 && !scanning ? (
         <EmptyState />
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5 md:px-8">
             <select aria-label="Age filter" value={filter.olderThanDays ?? ''}
               onChange={e => updateFilter({ olderThanDays: e.target.value ? Number(e.target.value) : null })}
-              className="rounded border border-border bg-surface px-2 py-1">
+              className="field px-2 py-1">
               {AGE_FILTERS.map(f => <option key={f.label} value={f.days ?? ''}>{f.label}</option>)}
             </select>
             <select aria-label="Size filter" value={filter.largerThanBytes ?? ''}
               onChange={e => updateFilter({ largerThanBytes: e.target.value ? Number(e.target.value) : null })}
-              className="rounded border border-border bg-surface px-2 py-1">
+              className="field px-2 py-1">
               {SIZE_FILTERS.map(f => <option key={f.label} value={f.bytes ?? ''}>{f.label}</option>)}
             </select>
             <label className="flex items-center gap-1.5">
-              <input type="checkbox" checked={filter.unreadOnly} onChange={e => updateFilter({ unreadOnly: e.target.checked })} />
+              <input type="checkbox" className="accent-[var(--accent)]" checked={filter.unreadOnly} onChange={e => updateFilter({ unreadOnly: e.target.checked })} />
               Unread only
             </label>
-            <span className="ml-auto text-xs text-muted">
+            <span className="meta ml-auto">
               {cleanup.analyzing ? 'Updating…' : cleanup.scannedAt
                 ? `${cleanup.messages.length.toLocaleString()} messages from ${scope === 'inbox' ? 'your inbox' : 'all mail'}, scanned ${formatListDate(cleanup.scannedAt)}${cleanup.complete ? '' : ' (newest only)'}`
                 : null}
             </span>
           </div>
 
-          <nav aria-label="Groupings" className="flex gap-1 overflow-x-auto border-b border-border px-2">
+          <nav aria-label="Groupings" className="flex gap-5 overflow-x-auto border-b border-border px-4 md:px-8">
             {TABS.map(t => (
               <button key={t.id} type="button" onClick={() => setTab(t.id)} aria-current={tab === t.id ? 'page' : undefined}
-                className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm ${tab === t.id ? 'border-accent font-medium' : 'border-transparent text-muted hover:text-foreground'}`}>
-                {t.label}
-                {t.id !== 'overview' && analysis && <span className="ml-1 text-xs text-muted">{analysis.groups[t.id].length}</span>}
+                className={`whitespace-nowrap border-b-2 py-2.5 text-[1.05rem] ${tab === t.id ? 'border-marker italic' : 'border-transparent text-muted hover:text-foreground'}`}>
+                {tab === t.id && <span aria-hidden="true" className="mr-1 not-italic text-marker">§</span>}{t.label}
+                {t.id !== 'overview' && analysis && <span className="ml-1.5 font-mono text-[0.7rem] not-italic text-muted">{analysis.groups[t.id].length}</span>}
               </button>
             ))}
           </nav>
 
           <main className="flex-1">
             {!analysis ? (
-              <p className="p-8 text-center text-sm text-muted">Grouping your mail…</p>
+              <p className="p-10 text-center font-display text-lg italic text-muted">Sorting your mail into piles…</p>
             ) : tab === 'overview' ? (
               <InsightsOverview insights={{
                 ...analysis.insights,
@@ -193,9 +194,9 @@ export function CleanupApp({ account }: { account: Account }) {
 
 function EmptyState() {
   return (
-    <div className="mx-auto max-w-md p-10 text-center">
-      <h2 className="text-xl font-semibold">See where your mail comes from</h2>
-      <p className="mt-2 text-sm text-muted">
+    <div className="mx-auto max-w-lg px-6 py-16 text-center">
+      <h2 className="font-display text-[2rem] font-semibold leading-tight tracking-tight">See where your mail comes from</h2>
+      <p className="mt-3 text-[1.08rem] leading-relaxed text-muted">
         RainSweep reads the headers of your newest messages (never the bodies), then groups them by sender, mailing list,
         subject, size and age so you can unsubscribe and clear out whole groups at once. The scan stays on this device.
       </p>
