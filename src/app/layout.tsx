@@ -7,10 +7,10 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Mail',
+  title: 'RainSweep',
   description: 'A fast, installable Gmail client.',
-  applicationName: 'Mail',
-  appleWebApp: { capable: true, title: 'Mail', statusBarStyle: 'default' },
+  applicationName: 'RainSweep',
+  appleWebApp: { capable: true, title: 'RainSweep', statusBarStyle: 'default' },
 }
 
 export const viewport: Viewport = {

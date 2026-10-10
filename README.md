@@ -1,4 +1,4 @@
-# Mail
+# RainSweep
 
 A fast, installable Gmail client, and a working example of **iDesign** volatility-based decomposition in a modern Next.js app.
 

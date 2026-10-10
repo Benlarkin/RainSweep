@@ -14,7 +14,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <div className="space-y-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon.svg" alt="" width={72} height={72} className="mx-auto" />
-          <h1 className="text-3xl font-semibold tracking-tight">Mail</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">RainSweep</h1>
           <p className="text-muted">A fast, installable client for your Gmail.</p>
         </div>
 

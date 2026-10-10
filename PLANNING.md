@@ -1,4 +1,4 @@
-# Mail — Planning
+# RainSweep — Planning
 
 ## Phase 1 — Functional Gmail client (this PR)
 

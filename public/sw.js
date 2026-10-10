@@ -1,4 +1,4 @@
-// Mail service worker: installable shell, offline reading of recently viewed
+// RainSweep service worker: installable shell, offline reading of recently viewed
 // mail, and notification clicks. Mail is cached only on this device and is
 // wiped on sign-out (see clearOfflineMail in the app).
 

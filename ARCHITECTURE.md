@@ -1,4 +1,4 @@
-# Mail — Architecture
+# RainSweep — Architecture
 
 ## Platform
 

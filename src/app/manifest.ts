@@ -3,8 +3,8 @@ import type { MetadataRoute } from 'next'
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/mail',
-    name: 'Mail',
-    short_name: 'Mail',
+    name: 'RainSweep',
+    short_name: 'RainSweep',
     description: 'A fast, installable Gmail client.',
     start_url: '/mail',
     scope: '/',
