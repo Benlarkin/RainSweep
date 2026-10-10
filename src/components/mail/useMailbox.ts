@@ -83,16 +83,21 @@ export function useMailbox(initialView: MailView, notify: (message: string, undo
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
+  // The URL write is a side effect, so it can't live inside a setState updater
+  // (React may run updaters during render). Track the latest view in a ref.
+  const viewRef = useRef(initialView)
   const navigate = useCallback((next: Partial<MailView>, mode: 'push' | 'replace' = 'push') => {
-    setView(prev => {
-      const merged = { ...prev, ...next }
-      writeViewToUrl(merged, mode)
-      return merged
-    })
+    const merged = { ...viewRef.current, ...next }
+    viewRef.current = merged
+    writeViewToUrl(merged, mode)
+    setView(merged)
   }, [])
 
   useEffect(() => {
-    const onPop = () => setView(readViewFromUrl())
+    const onPop = () => {
+      viewRef.current = readViewFromUrl()
+      setView(viewRef.current)
+    }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
