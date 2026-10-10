@@ -24,3 +24,9 @@
 *.tsbuildinfo
 next-env.d.ts
 .claude/settings.local.json
+
+# cloudflare (OpenNext + wrangler)
+/.open-next
+/.wrangler
+.dev.vars*
+cloudflare-env.d.ts

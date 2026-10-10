@@ -84,9 +84,30 @@ Open http://localhost:3000 and sign in.
 | `npm run demo` | Development server with the demo mailbox, no Google account needed |
 | `npm run screenshots` | Regenerate `docs/screenshots/` from a running demo server |
 | `npm run build` / `npm start` | Production build and server (the service worker only registers in production) |
+| `npm run preview` | Build for Cloudflare and run the Worker locally in workerd |
+| `npm run deploy` | Build for Cloudflare and deploy the Worker |
 | `npm test` | Unit, integration and architecture tests (Vitest) |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript, no emit |
+
+## Deploying to Cloudflare Workers
+
+RainSweep runs as a single Cloudflare Worker through the [OpenNext adapter](https://opennext.js.org/cloudflare), with no KV, R2 or database: sessions live in an encrypted cookie and mail stays in Gmail. The free plan is enough for one person.
+
+1. Set `APP_URL` in `wrangler.jsonc` to the Worker's public URL (for example `https://rainsweep.<your-subdomain>.workers.dev`, or a custom domain).
+2. Add `${APP_URL}/api/auth/google/callback` as an authorized redirect URI on the Google OAuth client.
+3. Store the secrets on the Worker, never in `wrangler.jsonc`:
+   ```bash
+   npx wrangler secret put GOOGLE_CLIENT_ID
+   npx wrangler secret put GOOGLE_CLIENT_SECRET
+   npx wrangler secret put SESSION_SECRET
+   ```
+   Use a fresh `SESSION_SECRET` for production rather than the one in `.env.local`.
+4. Deploy, either with `npm run deploy` (from macOS, Linux or WSL) or by connecting the repository under **Workers & Pages → Create → Import a repository** with build command `npx opennextjs-cloudflare build` and deploy command `npx opennextjs-cloudflare deploy`.
+
+The build copies values from local `.env*` files into the Worker as fallbacks, so deploy from a checkout whose `.env.local` holds only development values (or from Cloudflare's own build). Variables and secrets set on the Worker always take precedence.
+
+Static files skip the Worker, so their headers live in `public/_headers`. Free Workers make at most 50 outbound calls per request, which is why cleanup scans fetch 40 messages a page and bulk thread actions go out 40 at a time.
 
 ## Deploying to Vercel
 

@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rainsweep",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+  "vars": {
+    // Public origin, no trailing slash. Change it if you add a custom domain,
+    // and add ${APP_URL}/api/auth/google/callback to the Google OAuth client.
+    "APP_URL": "https://rainsweep.<your-subdomain>.workers.dev"
+  }
+  // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and SESSION_SECRET are secrets:
+  // set them with `npx wrangler secret put <NAME>` or in the dashboard,
+  // never in this file.
+}

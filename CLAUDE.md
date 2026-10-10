@@ -13,7 +13,7 @@ See [PLANNING.md](PLANNING.md) for what's next.
 
 ## Architecture
 
-**Stack:** Next.js (App Router) · TypeScript (strict) · Gmail API · Google OAuth (PKCE) · Tailwind CSS · Vitest · Hosted on Vercel
+**Stack:** Next.js (App Router) · TypeScript (strict) · Gmail API · Google OAuth (PKCE) · Tailwind CSS · Vitest · Hosted on Cloudflare Workers (OpenNext)
 
 | Layer | Components |
 |---|---|
