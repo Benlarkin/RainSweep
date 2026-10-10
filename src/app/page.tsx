@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getContainer } from '@/lib/server/container'
 import { GetAccountRequest } from '@/managers/account/AccountRequests'
+import { isDemoMode } from '@/lib/config'
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams
@@ -29,11 +30,13 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           href="/api/auth/google/start"
           className="flex w-full items-center justify-center gap-3 rounded-xl bg-accent px-4 py-3 font-medium text-accent-foreground shadow-sm transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          Sign in with Google
+          {isDemoMode() ? 'Open the demo mailbox' : 'Sign in with Google'}
         </a>
 
         <p className="text-xs text-muted">
-          Your mail stays in Gmail. This app keeps only an encrypted session cookie in your browser.
+          {isDemoMode()
+            ? 'Demo mode: a made-up mailbox that resets when the server restarts. Nothing touches Gmail.'
+            : 'Your mail stays in Gmail. This app keeps only an encrypted session cookie in your browser.'}
         </p>
       </div>
     </main>

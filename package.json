@@ -4,10 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "demo": "RAINSWEEP_DEMO=1 next dev",
     "build": "next build",
     "start": "next start",
+    "build:demo": "RAINSWEEP_DEMO=1 next build",
+    "start:demo": "RAINSWEEP_DEMO=1 next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "screenshots": "node scripts/screenshots.mjs",
     "test": "vitest run"
   },
   "dependencies": {
@@ -24,6 +28,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "playwright": "^1.56.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3"
