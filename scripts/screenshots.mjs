@@ -75,7 +75,7 @@ console.log(`Capturing from ${BASE}`)
   await context.close()
 }
 
-// The tour: read, archive, then sweep a newsletter away. Recorded last because it changes the mailbox.
+// The tour: read, archive, sweep the inbox's bulk mail, then unsubscribe from a newsletter. Recorded last because it changes the mailbox.
 {
   const videoDir = path.join(OUT, '.video')
   const size = { width: 1280, height: 800 }
@@ -85,8 +85,12 @@ console.log(`Capturing from ${BASE}`)
   await openThread(page, 'Saturday hike if the rain lets up?')
   await pause(1500)
   await page.keyboard.press('e')
+  await pause(1200)
+  await page.getByRole('button', { name: 'Show' }).click()
   await pause(1500)
-  await page.getByRole('link', { name: 'Clean up' }).click()
+  await page.getByRole('button', { name: 'Sweep all' }).click()
+  await pause(1800)
+  await page.getByRole('link', { name: /Sweep/ }).click()
   await page.getByRole('button', { name: 'Scan my mail' }).click()
   await page.getByRole('button', { name: 'Rescan' }).waitFor({ timeout: 60_000 })
   await pause(2000)

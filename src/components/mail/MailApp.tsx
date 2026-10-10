@@ -10,7 +10,7 @@ import { clearOfflineMail } from '@/components/pwa/ServiceWorkerRegistration'
 import { Toast, type ToastState } from '@/components/ui/Toast'
 import { ArchiveIcon, CloseIcon, MailIcon, MailOpenIcon, MenuIcon, RefreshIcon, SearchIcon, TrashIcon } from '@/components/ui/Icons'
 import { Sidebar } from './Sidebar'
-import { ThreadList } from './ThreadList'
+import { ThreadList, type SweepTray } from './ThreadList'
 import { ThreadView } from './ThreadView'
 import { ComposeDialog } from './ComposeDialog'
 import { ShortcutsHelp } from './ShortcutsHelp'
@@ -53,6 +53,22 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
 
   const mailbox = useMailbox(initialView, notify)
   const { view, navigate, labels, list, thread, focusIndex, setFocusIndex, offline, act, actMany, selected } = mailbox
+
+  // People first: in the inbox, mail from lists and shops folds into a tray below conversations with people.
+  const [trayOpen, setTrayOpen] = useState(false)
+  const peopleFirst = view.label === 'INBOX' && !view.search
+  const people = peopleFirst ? list.threads.filter(t => !t.fromMailingList) : list.threads
+  const bulk = peopleFirst ? list.threads.filter(t => t.fromMailingList) : []
+  const ordered = bulk.length ? [...people, ...bulk] : list.threads
+  const threads = bulk.length && !trayOpen ? people : ordered
+  const tray: SweepTray | null = bulk.length === 0 ? null : {
+    position: people.length,
+    count: bulk.length,
+    senders: [...new Set(bulk.flatMap(t => t.participants.slice(-1).map(AddressUtility.displayName)))],
+    expanded: trayOpen,
+    onToggle: () => setTrayOpen(open => !open),
+    onSweep: () => void actMany(bulk.map(t => t.id), 'archive'),
+  }
 
   const [compose, setCompose] = useState<ComposeState | null>(() => initialCompose(composeRequest))
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -143,14 +159,14 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
     navigate({ label: id, search: '', threadId: null })
   }, [navigate])
 
-  const currentIndex = view.threadId ? list.threads.findIndex(t => t.id === view.threadId) : focusIndex
+  const currentIndex = view.threadId ? threads.findIndex(t => t.id === view.threadId) : focusIndex
   const step = (delta: number) => {
-    const next = Math.min(Math.max(currentIndex + delta, 0), list.threads.length - 1)
+    const next = Math.min(Math.max(currentIndex + delta, 0), threads.length - 1)
     if (next < 0) return
     setFocusIndex(next)
-    if (view.threadId && list.threads[next]) openThread(list.threads[next].id)
+    if (view.threadId && threads[next]) openThread(threads[next].id)
   }
-  const targetId = view.threadId ?? list.threads[focusIndex]?.id ?? null
+  const targetId = view.threadId ?? threads[focusIndex]?.id ?? null
   // With conversations checked, actions apply to all of them.
   const actOnTarget = (action: ThreadAction) => {
     if (!view.threadId && selected.size > 0) void actMany([...selected], action)
@@ -164,22 +180,22 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
     '?': () => setShowHelp(true),
     j: () => step(1),
     k: () => step(-1),
-    o: () => { if (list.threads[focusIndex]) openThread(list.threads[focusIndex].id) },
-    Enter: () => { if (!view.threadId && list.threads[focusIndex]) openThread(list.threads[focusIndex].id) },
+    o: () => { if (threads[focusIndex]) openThread(threads[focusIndex].id) },
+    Enter: () => { if (!view.threadId && threads[focusIndex]) openThread(threads[focusIndex].id) },
     u: backToList,
     Escape: () => { if (showHelp) setShowHelp(false); else if (selected.size) mailbox.clearSelection(); else backToList() },
-    x: () => { const t = list.threads[focusIndex]; if (t && !view.threadId) mailbox.toggleSelected(t.id) },
-    '*': () => { if (selected.size) mailbox.clearSelection(); else mailbox.selectAll() },
+    x: () => { const t = threads[focusIndex]; if (t && !view.threadId) mailbox.toggleSelected(t.id) },
+    '*': () => { if (selected.size) mailbox.clearSelection(); else mailbox.selectAll(threads.map(t => t.id)) },
     'g c': () => { window.location.href = '/cleanup' },
     e: () => actOnTarget('archive'),
     '#': () => actOnTarget('trash'),
     s: () => {
       if (!view.threadId && selected.size > 0) {
-        const anyUnstarred = list.threads.some(t => selected.has(t.id) && !t.starred)
+        const anyUnstarred = threads.some(t => selected.has(t.id) && !t.starred)
         void actMany([...selected], anyUnstarred ? 'star' : 'unstar')
         return
       }
-      const t = list.threads.find(x => x.id === targetId)
+      const t = threads.find(x => x.id === targetId)
       const starred = t?.starred ?? thread.data?.messages.some(m => m.starred) ?? false
       actOnTarget(starred ? 'unstar' : 'star')
     },
@@ -225,7 +241,7 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
     <div className="flex h-full overflow-hidden">
       {/* Sidebar: fixed column on desktop, drawer on mobile. */}
       <div className={`fixed inset-0 z-30 bg-black/30 md:hidden ${sidebarOpen ? '' : 'hidden'}`} onClick={() => setSidebarOpen(false)} />
-      <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-background transition-transform md:static md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-30 w-60 bg-background transition-transform md:static md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar
           account={account}
           labels={labels}
@@ -239,36 +255,36 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
         />
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col bg-surface md:my-2 md:mr-2 md:rounded-2xl md:border md:border-border">
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-          <button type="button" aria-label="Open menu" className="rounded-full p-2 text-muted md:hidden" onClick={() => setSidebarOpen(true)}><MenuIcon /></button>
-          <form role="search" className="flex flex-1 items-center gap-2 rounded-full bg-surface-muted px-4 py-2"
+      <main className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center gap-2 border-b border-border px-3 py-2.5 md:px-6">
+          <button type="button" aria-label="Open menu" className="p-2 text-muted md:hidden" onClick={() => setSidebarOpen(true)}><MenuIcon /></button>
+          <form role="search" className="flex flex-1 items-center gap-2.5 border-b border-transparent px-1 py-1.5 focus-within:border-foreground"
             onSubmit={e => { e.preventDefault(); navigate({ search: searchText.trim(), label: searchText.trim() ? null : 'INBOX', threadId: null }) }}>
-            <SearchIcon width={18} height={18} className="text-muted" />
-            <input ref={searchInput} type="search" placeholder="Search mail" aria-label="Search mail" value={searchText}
+            <SearchIcon width={17} height={17} className="text-muted" />
+            <input ref={searchInput} type="search" placeholder="Search the archive…" aria-label="Search mail" value={searchText}
               onChange={e => setSearchText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Escape') { e.currentTarget.blur() } }}
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted" />
+              className="w-full bg-transparent text-[1.02rem] outline-none placeholder:italic placeholder:text-muted" />
           </form>
-          <button type="button" aria-label="Refresh" title="Refresh" onClick={mailbox.refresh} className="rounded-full p-2 text-muted hover:bg-surface-muted"><RefreshIcon width={18} height={18} /></button>
+          <button type="button" aria-label="Refresh" title="Refresh" onClick={mailbox.refresh} className="p-2 text-muted hover:text-foreground"><RefreshIcon width={18} height={18} /></button>
         </div>
 
         {offline && (
-          <p role="status" className="bg-amber-100 px-4 py-1.5 text-center text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <p role="status" className="border-b border-border bg-surface-muted px-4 py-1.5 text-center text-sm italic">
             You’re offline. Showing mail saved on this device.
           </p>
         )}
 
         <div className="flex min-h-0 flex-1">
           <section aria-label={heading}
-            className={`min-w-0 flex-col border-border lg:flex lg:w-[400px] lg:flex-none lg:border-r ${view.threadId ? 'hidden' : 'flex flex-1'}`}>
+            className={`min-w-0 flex-col border-border bg-surface lg:flex lg:w-[440px] lg:flex-none lg:border-r ${view.threadId ? 'hidden' : 'flex flex-1'}`}>
             {selected.size > 0 ? (
-              <div role="toolbar" aria-label="Selected conversations" className="flex items-center gap-1 border-b border-border px-3 py-1.5">
-                <input type="checkbox" aria-label="Select all" checked={selected.size === list.threads.length}
-                  ref={el => { if (el) el.indeterminate = selected.size > 0 && selected.size < list.threads.length }}
-                  onChange={() => (selected.size === list.threads.length ? mailbox.clearSelection() : mailbox.selectAll())}
-                  className="mx-1 h-4 w-4 accent-[var(--accent)]" />
-                <span className="mr-auto text-sm font-medium">{selected.size} selected</span>
+              <div role="toolbar" aria-label="Selected conversations" className="flex items-center gap-1 border-b-[1.5px] border-foreground px-4 py-3">
+                <input type="checkbox" aria-label="Select all" checked={selected.size === threads.length}
+                  ref={el => { if (el) el.indeterminate = selected.size > 0 && selected.size < threads.length }}
+                  onChange={() => (selected.size === threads.length ? mailbox.clearSelection() : mailbox.selectAll(threads.map(t => t.id)))}
+                  className="mx-1 h-3.5 w-3.5 accent-[var(--accent)]" />
+                <span className="mr-auto font-display text-lg font-semibold">{selected.size} selected</span>
                 {view.label === 'TRASH'
                   ? <BulkButton label="Restore" onClick={() => actOnTarget('restore')}><ArchiveIcon width={18} height={18} /></BulkButton>
                   : <BulkButton label="Archive (e)" onClick={() => actOnTarget('archive')}><ArchiveIcon width={18} height={18} /></BulkButton>}
@@ -278,15 +294,17 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
                 <BulkButton label="Clear selection (Esc)" onClick={mailbox.clearSelection}><CloseIcon width={18} height={18} /></BulkButton>
               </div>
             ) : (
-              <div className="flex items-center gap-2 px-4 pb-1 pt-3">
-                <input type="checkbox" aria-label="Select all" checked={false} disabled={list.threads.length === 0}
-                  onChange={mailbox.selectAll} className="h-4 w-4 accent-[var(--accent)] opacity-60 hover:opacity-100" />
-                <h2 className="text-sm font-semibold text-muted">{heading}</h2>
+              <div className="flex items-baseline gap-3 border-b-[1.5px] border-foreground px-6 pb-3 pt-5">
+                <h2 className="min-w-0 truncate font-display text-[2rem] font-semibold leading-none tracking-tight">
+                  {peopleFirst ? <>People <em className="font-normal text-muted">first</em></> : heading}
+                </h2>
+                <input type="checkbox" aria-label="Select all" checked={false} disabled={threads.length === 0}
+                  onChange={() => mailbox.selectAll(threads.map(t => t.id))} className="ml-auto h-3.5 w-3.5 self-center accent-[var(--accent)] opacity-50 hover:opacity-100" />
               </div>
             )}
             <div className="min-h-0 flex-1 overflow-y-auto">
               <ThreadList
-                threads={list.threads}
+                threads={ordered}
                 selectedId={view.threadId}
                 checkedIds={selected}
                 onToggleChecked={mailbox.toggleSelected}
@@ -295,12 +313,13 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
                 loadingMore={list.loadingMore}
                 error={list.error}
                 hasMore={Boolean(list.nextPageToken)}
-                emptyMessage={view.search ? 'No conversations match your search.' : 'Nothing here. Enjoy the quiet.'}
+                emptyMessage={view.search ? 'Nothing in the archive matches that.' : 'Clear skies. Nothing waiting.'}
                 onOpen={openThread}
                 onFocus={setFocusIndex}
                 onAction={(id, action) => void act(id, action)}
                 onLoadMore={mailbox.loadMore}
                 onRetry={mailbox.refresh}
+                tray={tray}
               />
             </div>
           </section>
@@ -309,7 +328,7 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
             {view.threadId
               ? <ThreadView thread={thread.data} loading={thread.loading} error={thread.error} onBack={backToList}
                   onAction={action => { if (view.threadId) void act(view.threadId, action) }} onRespond={respond} onUnsubscribe={unsubscribe} />
-              : <div className="flex h-full items-center justify-center text-sm text-muted">Select a conversation to read it.</div>}
+              : <div className="flex h-full items-center justify-center font-display text-lg italic text-muted">Choose a letter to read it.</div>}
           </section>
         </div>
       </main>
@@ -327,7 +346,7 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
 function BulkButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button type="button" aria-label={label} title={label} onClick={onClick}
-      className="rounded-full p-2 text-muted transition hover:bg-surface-muted hover:text-foreground">
+      className="p-2 text-muted transition hover:bg-surface-muted hover:text-foreground">
       {children}
     </button>
   )

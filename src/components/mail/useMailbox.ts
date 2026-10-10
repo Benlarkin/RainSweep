@@ -302,7 +302,8 @@ export function useMailbox(initialView: MailView, notify: (message: string, undo
       return next
     })
   }, [])
-  const selectAll = useCallback(() => setSelected(new Set(list.threads.map(t => t.id))), [list.threads])
+  // The inbox can hide some conversations (the folded sweep tray), so callers pass what is visible.
+  const selectAll = useCallback((ids: string[] = list.threads.map(t => t.id)) => setSelected(new Set(ids)), [list.threads])
   const clearSelection = useCallback(() => setSelected(new Set()), [])
 
   return {

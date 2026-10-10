@@ -2,11 +2,11 @@
 
 A fast, installable Gmail client, and a working example of **iDesign** volatility-based decomposition in a modern Next.js app.
 
-![Reading a conversation, archiving it, then unsubscribing from and trashing a newsletter in Clean up](docs/screenshots/tour.gif)
+![Reading a letter, filing it away, sweeping the inbox's newsletters, then unsubscribing from a sender in Sweep](docs/screenshots/tour.gif)
 
-| Inbox and reading | Clean up, grouped by sender |
+| People-first inbox and reading | Sweep, grouped by sender |
 |---|---|
-| ![Inbox with a conversation open](docs/screenshots/inbox.png) | ![Clean up grouped by sender, with unsubscribe, trash and archive per group](docs/screenshots/cleanup.png) |
+| ![Inbox with a conversation open](docs/screenshots/inbox.png) | ![Sweep grouped by sender, with unsubscribe, trash and archive per group](docs/screenshots/cleanup.png) |
 | **Inbox insights** | **Dark theme** |
 | ![Insights: top senders, subscriptions you never open, space used](docs/screenshots/insights.png) | ![Dark theme](docs/screenshots/dark.png) |
 
@@ -15,7 +15,8 @@ A fast, installable Gmail client, and a working example of **iDesign** volatilit
 <sub>Screenshots use the built-in demo mailbox. Every person, company and address in them is made up.</sub>
 
 - Sign in with Google; read, search, archive, star, trash, reply, reply-all, forward and send (with attachments)
-- **Clean up**: see who fills your mailbox, grouped by sender, mailing list, recurring subject, size and age. Unsubscribe in one click and trash, archive or mark read whole groups at once, with Undo
+- **People first**: the inbox puts mail from people on top and folds newsletters, shops and notifications into one tray you can sweep away
+- **Sweep** (clean up): see who fills your mailbox, grouped by sender, mailing list, recurring subject, size and age. Unsubscribe in one click and trash, archive or mark read whole groups at once, with Undo
 - Inbox insights: top senders, subscriptions you never open, who takes the most space, oldest mail
 - Select several conversations and act on them together
 - Gmail-style keyboard shortcuts (`?` shows them), Undo for archive, delete and send

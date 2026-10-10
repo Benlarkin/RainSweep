@@ -214,6 +214,7 @@ function fromRaw(raw: string, threadId: string | null): DemoMessage {
     subject: header('Subject'),
     text,
     html: null,
+    attachment: null,
     sizeEstimate: source.length,
     listId: null,
     unsubscribeUrl: null,

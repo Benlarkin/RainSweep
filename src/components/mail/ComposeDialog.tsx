@@ -62,43 +62,43 @@ export function ComposeDialog({ initial, offline, onSend, onDiscard }: ComposeDi
     if (e.key === 'Escape') { e.preventDefault(); discard() }
   }
 
-  const inputClass = 'w-full bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted'
+  const inputClass = 'w-full bg-transparent px-1 py-2.5 outline-none placeholder:italic placeholder:text-muted'
 
   return (
     <div ref={dialog} role="dialog" aria-modal="false" aria-label={TITLES[state.mode]} onKeyDown={onKeyDown}
-      className="fixed inset-0 z-40 flex flex-col bg-surface shadow-2xl md:inset-auto md:bottom-0 md:right-6 md:h-[min(640px,85vh)] md:w-[560px] md:rounded-t-xl md:border md:border-border">
-      <header className="flex items-center justify-between rounded-t-xl bg-surface-muted px-4 py-2.5">
-        <h2 className="text-sm font-semibold">{TITLES[state.mode]}</h2>
+      className="fixed inset-0 z-40 flex flex-col bg-letter shadow-[0_24px_60px_-20px_rgba(30,25,10,0.5)] md:inset-auto md:bottom-0 md:right-8 md:h-[min(640px,85vh)] md:w-[580px] md:border-[1.5px] md:border-b-0 md:border-foreground">
+      <header className="flex items-center justify-between border-b-[1.5px] border-foreground px-5 py-3">
+        <h2 className="font-display text-lg font-semibold">{TITLES[state.mode]}</h2>
         <button type="button" aria-label="Close and discard" onClick={discard} className="rounded p-1 text-muted hover:text-foreground"><CloseIcon width={18} height={18} /></button>
       </header>
 
-      <div className="flex items-center gap-2 border-b border-border px-4">
-        <label htmlFor="compose-to" className="text-sm text-muted">To</label>
+      <div className="flex items-center gap-2 border-b border-border px-5">
+        <label htmlFor="compose-to" className="meta w-8">To</label>
         <input id="compose-to" className={inputClass} value={state.to} onChange={e => set('to', e.target.value)} autoComplete="email" multiple />
-        {!showCc && <button type="button" onClick={() => setShowCc(true)} className="text-sm text-muted hover:text-foreground">Cc/Bcc</button>}
+        {!showCc && <button type="button" onClick={() => setShowCc(true)} className="meta hover:text-foreground">Cc/Bcc</button>}
       </div>
       {showCc && (
         <>
-          <div className="flex items-center gap-2 border-b border-border px-4">
-            <label htmlFor="compose-cc" className="text-sm text-muted">Cc</label>
+          <div className="flex items-center gap-2 border-b border-border px-5">
+            <label htmlFor="compose-cc" className="meta w-8">Cc</label>
             <input id="compose-cc" className={inputClass} value={state.cc} onChange={e => set('cc', e.target.value)} />
           </div>
-          <div className="flex items-center gap-2 border-b border-border px-4">
-            <label htmlFor="compose-bcc" className="text-sm text-muted">Bcc</label>
+          <div className="flex items-center gap-2 border-b border-border px-5">
+            <label htmlFor="compose-bcc" className="meta w-8">Bcc</label>
             <input id="compose-bcc" className={inputClass} value={state.bcc} onChange={e => set('bcc', e.target.value)} />
           </div>
         </>
       )}
-      <div className="border-b border-border px-4">
-        <input aria-label="Subject" placeholder="Subject" className={inputClass} value={state.subject} onChange={e => set('subject', e.target.value)} />
+      <div className="border-b border-border px-5">
+        <input aria-label="Subject" placeholder="Subject" className={`${inputClass} font-display text-lg font-semibold`} value={state.subject} onChange={e => set('subject', e.target.value)} />
       </div>
       <textarea id="compose-body" aria-label="Message" value={state.body} onChange={e => set('body', e.target.value)}
-        className="flex-1 resize-none bg-transparent px-5 py-3 font-sans text-sm leading-relaxed outline-none" />
+        className="flex-1 resize-none bg-transparent px-6 py-4 text-[1.08rem] leading-[1.65] outline-none" />
 
       {state.attachments.length > 0 && (
         <ul className="flex flex-wrap gap-2 px-4 pb-2">
           {state.attachments.map((file, i) => (
-            <li key={`${file.name}-${i}`} className="flex items-center gap-2 rounded-lg bg-surface-muted px-2.5 py-1 text-xs">
+            <li key={`${file.name}-${i}`} className="flex items-center gap-2 border border-foreground bg-background px-2.5 py-1 font-mono text-xs">
               <span className="max-w-40 truncate">{file.name}</span>
               <span className="text-muted">{formatBytes(file.size)}</span>
               <button type="button" aria-label={`Remove ${file.name}`} onClick={() => set('attachments', state.attachments.filter((_, j) => j !== i))}>
@@ -109,12 +109,12 @@ export function ComposeDialog({ initial, offline, onSend, onDiscard }: ComposeDi
         </ul>
       )}
 
-      {error && <p role="alert" className="px-4 pb-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p role="alert" className="px-5 pb-2 italic text-marker">{error}</p>}
 
-      <footer className="flex items-center gap-2 border-t border-border px-4 py-3">
+      <footer className="flex items-center gap-2 border-t border-border px-5 py-3">
         <button type="button" onClick={validateAndSend} disabled={offline}
           title={offline ? 'You are offline. Your draft is saved on this device.' : 'Send (Ctrl/⌘+Enter)'}
-          className="flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground transition hover:opacity-90 disabled:opacity-50">
+          className="flex items-center gap-2 bg-foreground px-5 py-2 font-mono text-xs uppercase tracking-[0.08em] text-background transition hover:opacity-85 disabled:opacity-50">
           Send <SendIcon width={16} height={16} />
         </button>
         <input ref={fileInput} type="file" multiple hidden onChange={e => {
@@ -123,12 +123,12 @@ export function ComposeDialog({ initial, offline, onSend, onDiscard }: ComposeDi
           e.target.value = ''
         }} />
         <button type="button" aria-label="Attach files" title="Attach files" onClick={() => fileInput.current?.click()}
-          className="rounded-full p-2 text-muted hover:bg-surface-muted hover:text-foreground">
+          className="p-2 text-muted hover:bg-surface-muted hover:text-foreground">
           <PaperclipIcon width={18} height={18} />
         </button>
-        {offline && <span className="text-xs text-muted">Offline: draft saved on this device</span>}
+        {offline && <span className="text-sm italic text-muted">Offline: draft saved on this device</span>}
         <button type="button" aria-label="Discard draft" title="Discard draft" onClick={discard}
-          className="ml-auto rounded-full p-2 text-muted hover:bg-surface-muted hover:text-foreground">
+          className="ml-auto p-2 text-muted hover:bg-surface-muted hover:text-foreground">
           <TrashIcon width={18} height={18} />
         </button>
       </footer>

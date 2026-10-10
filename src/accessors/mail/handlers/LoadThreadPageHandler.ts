@@ -28,7 +28,7 @@ export class LoadThreadPageHandler implements IHandler<LoadThreadPageRequest> {
     const summaries = await ConcurrencyUtility.mapWithLimit(ids, 8, async id => {
       const result = await this.gmail.get(accessToken, `/threads/${encodeURIComponent(id)}`, {
         format: 'metadata',
-        metadataHeaders: ['From', 'To', 'Subject', 'Date'],
+        metadataHeaders: ['From', 'To', 'Subject', 'Date', 'List-Id', 'List-Unsubscribe', 'Precedence'],
       })
       if (!result.ok || !isRecord(result.data) || !Array.isArray(result.data.messages)) return null
       const messages = result.data.messages.map(readMessageMeta).filter(m => m !== null)
@@ -61,7 +61,14 @@ function toSummary(id: string, messages: GmailMessageMeta[]): ThreadSummary {
     unread: labelIds.has('UNREAD'),
     starred: labelIds.has('STARRED'),
     labelIds: [...labelIds].filter(l => !FLAG_LABELS.has(l)),
+    fromMailingList: messages.some(isBulk),
   }
+}
+
+// RFC 2369 list headers, or the de facto Precedence header bulk senders set.
+function isBulk(message: GmailMessageMeta): boolean {
+  return Boolean(header(message.headers, 'List-Id') || header(message.headers, 'List-Unsubscribe'))
+    || /^(bulk|list|junk)$/i.test(header(message.headers, 'Precedence').trim())
 }
 
 // Gmail snippets arrive HTML-escaped.

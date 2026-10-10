@@ -18,6 +18,7 @@ export interface DemoMessage {
   subject: string
   text: string
   html: string | null
+  attachment: { filename: string; bytes: number } | null
   sizeEstimate: number
   listId: string | null
   unsubscribeUrl: string | null
@@ -48,6 +49,8 @@ interface Conversation {
   starred?: boolean
   html?: (text: string) => string
   attachmentKb?: number
+  /** A real file part on the last message, so the reading view shows an enclosure. */
+  attachment?: string
 }
 
 /** Hand-written threads: the mail a person actually wants to read. */
@@ -63,7 +66,8 @@ const CONVERSATIONS: Conversation[] = [
     subject: 'Re: Kitchen remodel quote',
     unread: true,
     starred: true,
-    attachmentKb: 2400,
+    attachmentKb: 240,
+    attachment: 'Whitfield-quote-itemized.pdf',
     lines: [
       { from: ME, hoursAgo: 30, text: 'Thanks for walking through it yesterday. Could you send the itemized version with the tile options?' },
       { from: 'Dana Whitfield <dana@whitfieldbuild.example>', hoursAgo: 2, text: 'Hi Jordan,\n\nAttached is the itemized quote. Option B (the slate tile) adds about $1,100 but holds up much better to wet boots.\n\nWe could start the week of the 21st.\n\nDana Whitfield\nWhitfield Build Co.' },
@@ -170,10 +174,6 @@ function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-function paragraphs(text: string): string {
-  return text.split('\n\n').map(p => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('')
-}
-
 function newsletterHtml(sender: string, subject: string, blurb: string): string {
   const name = sender.replace(/\s*<.*>$/, '')
   return `<div style="max-width:560px;margin:0 auto;font-family:Helvetica,Arial,sans-serif;color:#222">
@@ -213,6 +213,7 @@ export function buildDemoMailbox(now: number): DemoMessage[] {
         subject: conversation.subject,
         text: line.text,
         html: conversation.html ? conversation.html(escapeHtml(line.text)) : null,
+        attachment: last && conversation.attachment ? { filename: conversation.attachment, bytes: (conversation.attachmentKb ?? 1) * 1024 } : null,
         sizeEstimate: 4_000 + line.text.length * 2 + (last && conversation.attachmentKb ? conversation.attachmentKb * 1024 : 0),
         listId: null,
         unsubscribeUrl: null,
@@ -243,6 +244,7 @@ export function buildDemoMailbox(now: number): DemoMessage[] {
         subject,
         text: `${sender.blurb}\n\nThis is a sample message in RainSweep's demo mailbox.`,
         html: newsletterHtml(sender.from, subject, sender.blurb),
+        attachment: null,
         sizeEstimate: Math.round(sender.kb * 1024 * (0.7 + rand() * 0.6)),
         listId: sender.listId,
         unsubscribeUrl: sender.listId ? `https://${sender.listId.split('.').slice(-2).join('.')}/unsubscribe/${messageId}` : null,
@@ -271,23 +273,46 @@ export function rawSource(message: DemoMessage): string {
     ...(message.unsubscribeUrl ? [`List-Unsubscribe: <${message.unsubscribeUrl}>`, 'List-Unsubscribe-Post: List-Unsubscribe=One-Click'] : []),
     'MIME-Version: 1.0',
   ]
-  const body = message.html ?? `<div style="font-family:system-ui,sans-serif;line-height:1.5">${paragraphs(message.text)}</div>`
-  const source = [
-    ...headers,
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    '',
-    `--${boundary}`,
-    'Content-Type: text/plain; charset=utf-8',
-    '',
-    message.text,
-    `--${boundary}`,
-    'Content-Type: text/html; charset=utf-8',
-    '',
-    body,
-    `--${boundary}--`,
-    '',
-  ].join('\r\n')
+  // Mail from people is plain text, as most personal mail reads; bulk mail is HTML.
+  const alternative = message.html
+    ? [
+        `Content-Type: multipart/alternative; boundary="${boundary}-alt"`,
+        '',
+        `--${boundary}-alt`,
+        'Content-Type: text/plain; charset=utf-8',
+        '',
+        message.text,
+        `--${boundary}-alt`,
+        'Content-Type: text/html; charset=utf-8',
+        '',
+        message.html,
+        `--${boundary}-alt--`,
+      ]
+    : ['Content-Type: text/plain; charset=utf-8', '', message.text]
+  const parts = message.attachment
+    ? [
+        `Content-Type: multipart/mixed; boundary="${boundary}"`,
+        '',
+        `--${boundary}`,
+        ...alternative,
+        `--${boundary}`,
+        `Content-Type: application/pdf; name="${message.attachment.filename}"`,
+        `Content-Disposition: attachment; filename="${message.attachment.filename}"`,
+        'Content-Transfer-Encoding: base64',
+        '',
+        ...placeholderPdf(message.attachment.bytes),
+        `--${boundary}--`,
+      ]
+    : alternative
+  const source = [...headers, ...parts, ''].join('\r\n')
   return Base64UrlUtility.encode(source)
+}
+
+/** Base64 lines of a stand-in PDF of roughly the given size. */
+function placeholderPdf(bytes: number): string[] {
+  const stub = '%PDF-1.4\n% RainSweep demo attachment\n'
+  const content = new TextEncoder().encode(stub + ' '.repeat(Math.max(0, bytes - stub.length)))
+  return Base64UrlUtility.toBase64(content).match(/.{1,76}/g) ?? []
 }
 
 export function metadataHeaders(message: DemoMessage): Array<{ name: string; value: string }> {
