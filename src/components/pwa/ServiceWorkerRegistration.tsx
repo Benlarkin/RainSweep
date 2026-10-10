@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { deleteScanCache } from '@/components/cleanup/scanCache'
 
 export function ServiceWorkerRegistration() {
   useEffect(() => {
@@ -20,4 +21,5 @@ export async function clearOfflineMail(): Promise<void> {
     await Promise.all(keys.filter(k => k.startsWith('mc-api')).map(k => caches.delete(k)))
   }
   navigator.serviceWorker?.controller?.postMessage({ type: 'clear-user-data' })
+  await deleteScanCache()
 }

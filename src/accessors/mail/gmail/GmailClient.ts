@@ -8,7 +8,11 @@ type Query = Record<string, string | number | boolean | string[] | null | undefi
 
 /** Thin, typed-at-the-edge wrapper over the Gmail REST API. Accessor-internal. */
 export class GmailClient {
-  constructor(private readonly fetchFn: typeof fetch = fetch) {}
+  constructor(
+    private readonly fetchFn: typeof fetch = fetch,
+    private readonly maxRetries = 3,
+    private readonly sleep: (ms: number) => Promise<void> = ms => new Promise(resolve => setTimeout(resolve, ms)),
+  ) {}
 
   get(accessToken: string, path: string, query: Query = {}): Promise<GmailResult<unknown>> {
     return this.send(accessToken, 'GET', `${path}${toQueryString(query)}`)
@@ -20,18 +24,29 @@ export class GmailClient {
 
   private async send(accessToken: string, method: 'GET' | 'POST', path: string, body?: unknown): Promise<GmailResult<unknown>> {
     let response: Response
-    try {
-      response = await this.fetchFn(`${GMAIL_BASE}${path}`, {
-        method,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
-        cache: 'no-store',
-      })
-    } catch (err) {
-      return { ok: false, failure: failure('upstream_failure', `Could not reach Gmail: ${String(err)}`) }
+    let attempt = 0
+    for (;;) {
+      try {
+        response = await this.fetchFn(`${GMAIL_BASE}${path}`, {
+          method,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+          },
+          body: body === undefined ? undefined : JSON.stringify(body),
+          cache: 'no-store',
+        })
+      } catch (err) {
+        return { ok: false, failure: failure('upstream_failure', `Could not reach Gmail: ${String(err)}`) }
+      }
+      // Bulk scans brush against Gmail's per-user quota; back off and retry.
+      if ((response.status === 429 || response.status >= 500) && attempt < this.maxRetries) {
+        const retryAfter = Number(response.headers.get('retry-after'))
+        await this.sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 400 * 2 ** attempt)
+        attempt++
+        continue
+      }
+      break
     }
 
     if (response.ok) {

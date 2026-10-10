@@ -6,6 +6,7 @@ import { Base64UrlUtility } from '@/utilities/Base64UrlUtility'
 import { ParseMessageRequest } from '../MessageParsingEngineRequests'
 import { ParseMessageResponse } from '../MessageParsingEngineResponses'
 import { attachmentBytes, parseMessageIds, toMailAddresses } from './mimeMapping'
+import { readUnsubscribe } from './unsubscribeRules'
 
 /** Inline images larger than this stay as attachments rather than data: URIs. */
 const MAX_INLINE_IMAGE_BYTES = 1_000_000
@@ -47,6 +48,7 @@ export class ParseMessageHandler implements IHandler<ParseMessageRequest> {
     })
 
     const from = toMailAddresses(email.from ? [email.from] : undefined)[0] ?? null
+    const headerValue = (name: string): string | undefined => email.headers.find(h => h.key === name)?.value
     const parsedDate = email.date ? new Date(email.date) : null
 
     return new ParseMessageResponse(request.correlationId, {
@@ -66,6 +68,7 @@ export class ParseMessageHandler implements IHandler<ParseMessageRequest> {
       labelIds: message.labelIds,
       unread: message.unread,
       starred: message.starred,
+      unsubscribe: readUnsubscribe(headerValue('list-unsubscribe'), headerValue('list-unsubscribe-post')),
     })
   }
 }

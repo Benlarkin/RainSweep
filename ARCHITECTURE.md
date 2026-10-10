@@ -37,7 +37,9 @@ The system is decomposed by **volatility**, not by feature: each component encap
 | Session storage | `SessionAccessor` | Encrypted cookie → Supabase/Redis sessions |
 | Message format | `MessageParsingEngine` | MIME edge cases, inline images, S/MIME |
 | Composition rules | `CompositionEngine` | Reply-all policy, quoting style, signatures, rich text |
-| Use-case sequences | `AccountManager`, `MailboxManager`, `CompositionManager` | New workflows (snooze, scheduled send, rules) |
+| Grouping and insight rules | `GroupingEngine` | New groupings (by domain, by label), different size/age buckets, smarter subject matching |
+| Unsubscribe transport | `SubscriptionAccessor` | RFC 8058 one-click → a third-party unsubscribe service |
+| Use-case sequences | `AccountManager`, `MailboxManager`, `CompositionManager`, `CleanupManager` | New workflows (snooze, scheduled send, Auto Clean rules) |
 | Presentation | Clients (`app/`, `components/`) | Layout, devices, shortcuts |
 
 ### Layer map
@@ -46,6 +48,7 @@ The system is decomposed by **volatility**, not by feature: each component encap
 graph TD
     subgraph Clients
         UI[Mail UI<br/>components/mail]
+        CU[Clean up UI<br/>components/cleanup]
         RH[Route handlers<br/>app/api]
         SP[Server pages<br/>app/page, app/mail]
     end
@@ -54,18 +57,21 @@ graph TD
         AM[AccountManager]
         MM[MailboxManager]
         CM[CompositionManager]
+        CL[CleanupManager]
         AS[ActiveSessionActivity]
     end
 
     subgraph Engines
         MPE[MessageParsingEngine]
         CE[CompositionEngine]
+        GE[GroupingEngine]
     end
 
     subgraph Accessors
         MA[MailAccessor<br/>Gmail]
         IA[IdentityAccessor<br/>Google OAuth]
         SA[SessionAccessor<br/>encrypted cookie]
+        SU[SubscriptionAccessor<br/>one-click unsubscribe]
     end
 
     subgraph Utilities
@@ -73,11 +79,15 @@ graph TD
     end
 
     UI -- HTTP --> RH
+    CU -- HTTP --> RH
     RH --> Managers
     SP --> Managers
     MM --> MPE
     CM --> MPE
     CM --> CE
+    CL --> MPE
+    CL --> CE
+    CL --> GE
     Managers --> Accessors
     Engines --> Utilities
     Accessors --> Utilities
@@ -93,7 +103,7 @@ These are enforced by `tests/architecture.test.ts`, which fails the build on any
 - Engines hold business rules with no I/O. **Engines never call other Engines.**
 - Accessors expose atomic business verbs (`ArchiveThread`, not `ModifyLabels`) over one resource. **Accessors never call other Accessors** and contain no business logic.
 - Utilities are callable from every layer and call nothing above them.
-- Only `MailAccessor` knows Gmail exists (also enforced by the architecture test).
+- Only `MailAccessor` knows Gmail exists (also enforced by the architecture test). `SubscriptionAccessor` talks to the sender's unsubscribe endpoint, never to Gmail.
 
 ### Handler resolver pattern
 
@@ -110,8 +120,9 @@ One refinement over LoreKeeper: each request class names its response type (`cla
 | Manager | Use cases |
 |---|---|
 | `AccountManager` | Begin sign-in (PKCE + state), complete sign-in, sign out (revoke + clear), get the signed-in account |
-| `MailboxManager` | Labels with counts, thread pages and search, open a thread (parse + mark read), download an attachment, archive / move to inbox / trash / restore / read / unread / star / unstar |
+| `MailboxManager` | Labels with counts, thread pages and search, open a thread (parse + mark read), download an attachment, archive / move to inbox / trash / restore / read / unread / star / unstar, one at a time or for a selection |
 | `CompositionManager` | Prepare a reply, reply-all or forward draft; send a message |
+| `CleanupManager` | Scan a page of message metadata, group and summarize a scan, apply a bulk action (trash, restore, archive, move to inbox, read, unread) to up to 10,000 messages, unsubscribe from a sender |
 
 `ActiveSessionActivity` is the manager-layer step every mailbox use case starts with: load the session and refresh the access token when it is about to expire.
 
@@ -119,14 +130,16 @@ One refinement over LoreKeeper: each request class names its response type (`cla
 
 | Engine | Responsibility |
 |---|---|
-| `MessageParsingEngine` | RFC 5322/MIME → `MailMessage`; resolves `cid:` inline images to `data:` URIs; extracts attachments by index |
+| `MessageParsingEngine` | RFC 5322/MIME → `MailMessage`; resolves `cid:` inline images to `data:` URIs; extracts attachments by index; headers → cleanup metadata, including `List-Id` and `List-Unsubscribe` |
 | `CompositionEngine` | Who a reply goes to, reply-all recipients, `Re:`/`Fwd:` subjects, quoting, threading headers, recipient validation, and the outgoing message |
+| `GroupingEngine` | Applies the size / age / unread filter, then groups the same messages by sender, mailing list, recurring subject, size bucket and age bucket, and summarizes inbox insights (top senders, never-opened subscriptions, largest senders, oldest mail) |
 
 ### Accessors
 
 | Accessor | Resource | Verbs |
 |---|---|---|
-| `MailAccessor` | Gmail API | `load`: labels, thread page, thread (raw MIME), raw message. `store`: send, archive, move to inbox, trash, restore, set read, set starred |
+| `MailAccessor` | Gmail API | `load`: labels, thread page, thread (raw MIME), raw message, message metadata (single and paged). `store`: send, archive, move to inbox, trash, restore, set read, set starred, for threads and for message batches |
+| `SubscriptionAccessor` | Sender unsubscribe endpoints | `unsubscribe`: RFC 8058 one-click POST |
 | `IdentityAccessor` | Google OAuth 2.0 | `authorize`: build authorization URL, exchange code, refresh credentials. `revoke` |
 | `SessionAccessor` | Encrypted cookies | `load` session; `store` session and pending sign-in; `remove` session and pending sign-in |
 
@@ -176,6 +189,45 @@ sequenceDiagram
     RH-->>UI: JSON
 ```
 
+### Cleaning up
+
+```mermaid
+sequenceDiagram
+    participant UI as Clean up UI
+    participant DB as IndexedDB (this device)
+    participant CL as CleanupManager
+    participant MA as MailAccessor
+    participant PE as MessageParsingEngine
+    participant GE as GroupingEngine
+    participant SU as SubscriptionAccessor
+
+    loop until the chosen limit
+        UI->>CL: ScanMailboxRequest (pageToken)
+        CL->>MA: LoadMessageMetadataPageRequest (headers only)
+        CL->>PE: ParseMetadataRequest
+        CL-->>UI: MessageMetadata[]
+    end
+    UI->>DB: save scan
+    UI->>CL: AnalyzeMailboxRequest (scan, filter)
+    CL->>GE: GroupMessagesRequest
+    CL->>GE: SummarizeInsightsRequest
+    CL-->>UI: groups + insights
+    UI->>CL: ApplyBulkActionRequest (ids, trash)
+    CL->>MA: TrashMessagesRequest (batches of 1,000)
+    UI->>CL: UnsubscribeRequest (messageId)
+    CL->>MA: LoadMessageMetadataRequest (re-read headers)
+    CL->>PE: ParseMetadataRequest
+    alt one-click offered
+        CL->>SU: OneClickUnsubscribeRequest
+    else mailto offered
+        CL->>MA: SendMessageRequest
+    else link only
+        CL-->>UI: url for the user to open
+    end
+```
+
+The server stays stateless: the scan lives in the browser and is posted back for grouping, so changing a filter re-groups without re-reading Gmail. Trash uses the TRASH label, so every bulk action can be undone and nothing needs the broader `mail.google.com` scope.
+
 ### Replying
 
 ```mermaid
@@ -207,7 +259,8 @@ sequenceDiagram
 - **Email HTML**: rendered in an `<iframe sandbox>` without `allow-scripts`; a CSP inside the frame blocks all remote loads (tracking pixels) until the reader clicks "Show images".
 - **Attachments**: served with `Content-Disposition: attachment`, `nosniff`, and a sandboxing CSP.
 - **Header injection**: `MimeUtility` strips CR/LF from every header value.
-- **Offline cache**: mail cached by the service worker stays on the device and is deleted on sign-out.
+- **Offline cache**: mail cached by the service worker, and the Clean up scan in IndexedDB, stay on the device and are deleted on sign-out.
+- **Unsubscribe**: the server re-reads `List-Unsubscribe` from Gmail instead of trusting the browser, so the endpoint can't be used to POST to arbitrary URLs. One-click requests go to https, public hostnames only, with no redirects followed, no credentials and a 10 s timeout.
 
 ---
 
@@ -218,24 +271,29 @@ src/
 ├── app/                         # Client layer: pages and route handlers
 │   ├── api/                     #   HTTP → Manager requests
 │   ├── mail/page.tsx            #   the mail app (server checks session)
+│   ├── cleanup/page.tsx         #   Clean up: groupings, insights, bulk actions
 │   ├── page.tsx                 #   sign-in
 │   └── manifest.ts              #   PWA manifest (shortcuts, mailto handler)
 ├── components/                  # Client layer: React UI
 │   ├── mail/                    #   MailApp, ThreadList, ThreadView, ComposeDialog, …
+│   ├── cleanup/                 #   CleanupApp, GroupTable, GroupDetail, InsightsOverview, scan cache
 │   ├── pwa/
 │   └── ui/
 ├── managers/
 │   ├── account/                 # IAccountManager, AccountManager, Requests, Responses, handlers/
 │   ├── mailbox/
 │   ├── composition/
+│   ├── cleanup/
 │   └── shared/ActiveSessionActivity.ts
 ├── engines/
 │   ├── messageParsing/
-│   └── composition/
+│   ├── composition/
+│   └── grouping/
 ├── accessors/
 │   ├── mail/                    # gmail/ holds the only Gmail-specific code
 │   ├── identity/
-│   └── session/
+│   ├── session/
+│   └── subscription/
 ├── utilities/
 ├── common/                      # RequestBase, ResponseBase, resolver/
 ├── container/DependencyContainer.ts

@@ -1,10 +1,10 @@
 @AGENTS.md
 
-# Mail — Project Instructions
+# RainSweep — Project Instructions
 
 ## What This Is
 
-A Gmail client built as a PWA, and a working example of **iDesign** (Juval Löwy's volatility-based decomposition). Sign in with Google, read, search, archive, star, reply, forward and send, with keyboard shortcuts, offline reading and install support.
+RainSweep is a Gmail client built as a PWA, and a working example of **iDesign** (Juval Löwy's volatility-based decomposition). Sign in with Google, read, search, archive, star, reply, forward and send, with keyboard shortcuts, offline reading and install support. Clean up groups mail by sender, mailing list, subject, size and age for one-click unsubscribe and bulk trash, with an insights dashboard.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the layer map, volatility analysis, flows and security model.
 See [PLANNING.md](PLANNING.md) for what's next.
@@ -18,9 +18,9 @@ See [PLANNING.md](PLANNING.md) for what's next.
 | Layer | Components |
 |---|---|
 | Client | `app/` (pages, route handlers), `components/` |
-| Manager | `AccountManager`, `MailboxManager`, `CompositionManager` (+ `shared/ActiveSessionActivity`) |
-| Engine | `MessageParsingEngine`, `CompositionEngine` |
-| Accessor | `MailAccessor` (Gmail), `IdentityAccessor` (Google OAuth), `SessionAccessor` (encrypted cookie) |
+| Manager | `AccountManager`, `MailboxManager`, `CompositionManager`, `CleanupManager` (+ `shared/ActiveSessionActivity`) |
+| Engine | `MessageParsingEngine`, `CompositionEngine`, `GroupingEngine` |
+| Accessor | `MailAccessor` (Gmail), `IdentityAccessor` (Google OAuth), `SessionAccessor` (encrypted cookie), `SubscriptionAccessor` (one-click unsubscribe) |
 | Utility | `AddressUtility`, `MimeUtility`, `CryptoUtility`, `Base64UrlUtility`, `ConcurrencyUtility`, `MailtoUtility` |
 
 All component classes are thin shells over `HandlerResolver` instances. All logic lives in `handlers/`. Wiring happens only in `src/container/DependencyContainer.ts`.

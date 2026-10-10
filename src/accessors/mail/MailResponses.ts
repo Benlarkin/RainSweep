@@ -1,5 +1,5 @@
 import { ResponseBase, type Failure } from '@/common/ResponseBase'
-import type { MailLabel, RawMailMessage, ThreadPage } from '@/types'
+import type { MailLabel, RawMailMessage, RawMessageMetadata, ThreadPage } from '@/types'
 
 export class LoadLabelsResponse extends ResponseBase {
   constructor(correlationId: string, public readonly labels: MailLabel[], error: Failure | null = null) {
@@ -44,6 +44,30 @@ export class SendMessageResponse extends ResponseBase {
 
 export class ThreadStateResponse extends ResponseBase {
   constructor(correlationId: string, public readonly threadId: string, error: Failure | null = null) {
+    super(correlationId, error)
+  }
+}
+
+export class LoadMessageMetadataPageResponse extends ResponseBase {
+  constructor(
+    correlationId: string,
+    public readonly messages: RawMessageMetadata[],
+    public readonly nextPageToken: string | null,
+    public readonly resultSizeEstimate: number,
+    error: Failure | null = null,
+  ) {
+    super(correlationId, error)
+  }
+}
+
+export class LoadMessageMetadataResponse extends ResponseBase {
+  constructor(correlationId: string, public readonly message: RawMessageMetadata | null, error: Failure | null = null) {
+    super(correlationId, error)
+  }
+}
+
+export class MessagesStateResponse extends ResponseBase {
+  constructor(correlationId: string, public readonly updatedCount: number, error: Failure | null = null) {
     super(correlationId, error)
   }
 }

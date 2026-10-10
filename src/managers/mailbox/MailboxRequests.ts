@@ -1,5 +1,5 @@
 import { RequestBase } from '@/common/RequestBase'
-import type { GetLabelsResponse, GetThreadsResponse, GetThreadResponse, GetAttachmentResponse, UpdateThreadResponse } from './MailboxResponses'
+import type { GetLabelsResponse, GetThreadsResponse, GetThreadResponse, GetAttachmentResponse, UpdateThreadResponse, UpdateThreadsResponse } from './MailboxResponses'
 
 export class GetLabelsRequest extends RequestBase<GetLabelsResponse> {}
 
@@ -32,6 +32,16 @@ export type ThreadAction = (typeof THREAD_ACTIONS)[number]
 export class UpdateThreadRequest extends RequestBase<UpdateThreadResponse> {
   constructor(
     public readonly threadId: string,
+    public readonly action: ThreadAction,
+  ) { super() }
+}
+
+export const MAX_BULK_THREADS = 500
+
+/** The same action on several selected conversations. */
+export class UpdateThreadsRequest extends RequestBase<UpdateThreadsResponse> {
+  constructor(
+    public readonly threadIds: string[],
     public readonly action: ThreadAction,
   ) { super() }
 }

@@ -33,6 +33,10 @@ export const PaperclipIcon = (p: IconProps) => <Icon {...p}><path d="m21.44 11.0
 export const RefreshIcon = (p: IconProps) => <Icon {...p}><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></Icon>
 export const KeyboardIcon = (p: IconProps) => <Icon {...p}><rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" /></Icon>
 
+export const BroomIcon = (p: IconProps) => <Icon {...p}><path d="m13 11 8-8" /><path d="M9.5 10.5 13.5 14.5" /><path d="M4 21c0-4 2-7.5 5.5-10.5l4 4C10.5 18 7 20 4 21z" /><path d="M7 18l2-2" /></Icon>
+export const ChartIcon = (p: IconProps) => <Icon {...p}><path d="M3 3v18h18" /><path d="M7 15v3M12 10v8M17 6v12" /></Icon>
+export const UnsubscribeIcon = (p: IconProps) => <Icon {...p}><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /><path d="M4 20 20 4" /></Icon>
+
 export function LabelIcon({ id, ...props }: IconProps & { id: string }) {
   switch (id) {
     case 'INBOX': return <InboxIcon {...props} />

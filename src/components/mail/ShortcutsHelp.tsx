@@ -7,6 +7,8 @@ export const SHORTCUTS: ReadonlyArray<[string, string]> = [
   ['/', 'Search'],
   ['j / k', 'Next / previous conversation'],
   ['o or Enter', 'Open conversation'],
+  ['x', 'Select conversation'],
+  ['*', 'Select all / none'],
   ['u or Esc', 'Back to list'],
   ['e', 'Archive'],
   ['#', 'Delete'],
@@ -19,6 +21,7 @@ export const SHORTCUTS: ReadonlyArray<[string, string]> = [
   ['g then i', 'Go to Inbox'],
   ['g then s', 'Go to Starred'],
   ['g then t', 'Go to Sent'],
+  ['g then c', 'Go to Clean up'],
   ['Ctrl/⌘ + Enter', 'Send message'],
   ['?', 'Show this help'],
 ]

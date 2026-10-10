@@ -17,9 +17,10 @@ interface ThreadViewProps {
   onBack: () => void
   onAction: (action: ThreadAction) => void
   onRespond: (message: MailMessage, mode: DraftMode) => void
+  onUnsubscribe: (message: MailMessage) => void
 }
 
-export function ThreadView({ thread, loading, error, onBack, onAction, onRespond }: ThreadViewProps) {
+export function ThreadView({ thread, loading, error, onBack, onAction, onRespond, onUnsubscribe }: ThreadViewProps) {
   if (loading) {
     return <div className="flex h-full items-center justify-center text-sm text-muted" aria-busy="true">Loading conversation…</div>
   }
@@ -57,7 +58,7 @@ export function ThreadView({ thread, loading, error, onBack, onAction, onRespond
         <h1 className="mb-5 text-xl font-semibold leading-snug">{thread.subject || '(no subject)'}</h1>
         <ol className="space-y-3">
           {thread.messages.map((message, i) => (
-            <MessageCard key={message.id} message={message} defaultOpen={i === thread.messages.length - 1 || message.unread} onRespond={onRespond} />
+            <MessageCard key={message.id} message={message} defaultOpen={i === thread.messages.length - 1 || message.unread} onRespond={onRespond} onUnsubscribe={onUnsubscribe} />
           ))}
         </ol>
 
@@ -75,7 +76,7 @@ export function ThreadView({ thread, loading, error, onBack, onAction, onRespond
   )
 }
 
-function MessageCard({ message, defaultOpen, onRespond }: { message: MailMessage; defaultOpen: boolean; onRespond: ThreadViewProps['onRespond'] }) {
+function MessageCard({ message, defaultOpen, onRespond, onUnsubscribe }: { message: MailMessage; defaultOpen: boolean; onRespond: ThreadViewProps['onRespond']; onUnsubscribe: ThreadViewProps['onUnsubscribe'] }) {
   const [open, setOpen] = useState(defaultOpen)
   const sender = message.from ? AddressUtility.displayName(message.from) : '(unknown sender)'
   const files = message.attachments.filter(a => !a.inline)
@@ -93,6 +94,14 @@ function MessageCard({ message, defaultOpen, onRespond }: { message: MailMessage
             {open && message.from && <span className="hidden truncate text-xs text-muted sm:inline">&lt;{message.from.address}&gt;</span>}
             <time className="ml-auto shrink-0 text-xs text-muted" dateTime={message.date}>{formatFullDate(message.date)}</time>
           </div>
+          {open && message.unsubscribe && (
+            <span role="button" tabIndex={0}
+              onClick={e => { e.stopPropagation(); onUnsubscribe(message) }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); onUnsubscribe(message) } }}
+              className="float-right ml-2 mt-0.5 rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-muted hover:bg-surface-muted hover:text-foreground">
+              Unsubscribe
+            </span>
+          )}
           {open
             ? <p className="truncate text-xs text-muted">to {[...message.to, ...message.cc].map(AddressUtility.displayName).join(', ') || 'undisclosed recipients'}</p>
             : <p className="truncate text-sm text-muted">{preview}</p>}

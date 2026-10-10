@@ -3,6 +3,9 @@
 A fast, installable Gmail client, and a working example of **iDesign** volatility-based decomposition in a modern Next.js app.
 
 - Sign in with Google; read, search, archive, star, trash, reply, reply-all, forward and send (with attachments)
+- **Clean up**: see who fills your mailbox, grouped by sender, mailing list, recurring subject, size and age. Unsubscribe in one click and trash, archive or mark read whole groups at once, with Undo
+- Inbox insights: top senders, subscriptions you never open, who takes the most space, oldest mail
+- Select several conversations and act on them together
 - Gmail-style keyboard shortcuts (`?` shows them), Undo for archive, delete and send
 - Installable PWA: offline reading of recently opened mail, unread badge on the app icon, opens `mailto:` links, new-mail notifications
 - Email HTML is sandboxed and remote images (tracking pixels) are blocked until you ask for them

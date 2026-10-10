@@ -60,6 +60,7 @@ export interface MailMessage {
   labelIds: string[]
   unread: boolean
   starred: boolean
+  unsubscribe: UnsubscribeOptions | null
 }
 
 export interface MailThread {
@@ -131,4 +132,91 @@ export interface OutgoingMessage {
   references: string[]
   date: Date
   messageId: string
+}
+
+// ── Cleanup ─────────────────────────────────────────────────────────────────
+
+/** How a sender lets you leave their list (RFC 2369 List-Unsubscribe, RFC 8058 one-click). */
+export interface UnsubscribeOptions {
+  oneClick: boolean          // List-Unsubscribe-Post: List-Unsubscribe=One-Click with an https URL
+  httpUrl: string | null
+  mailto: string | null
+}
+
+/** Headers-only view of a message, as the provider returns it. */
+export interface RawMessageMetadata {
+  id: string
+  threadId: string
+  labelIds: string[]
+  unread: boolean
+  sizeEstimate: number       // bytes
+  receivedAt: string         // ISO-8601
+  headers: Record<string, string>   // lower-cased names
+}
+
+/** Parsed metadata used by the cleanup tools. Never contains a body. */
+export interface MessageMetadata {
+  id: string
+  threadId: string
+  from: MailAddress | null
+  subject: string
+  date: string               // ISO-8601
+  sizeEstimate: number
+  unread: boolean
+  labelIds: string[]
+  listId: string | null
+  unsubscribe: UnsubscribeOptions | null
+}
+
+export type GroupingKind = 'sender' | 'list' | 'subject' | 'size' | 'age'
+
+export interface MailGroup {
+  id: string                 // `${kind}:${key}`, stable across scans
+  kind: GroupingKind
+  label: string
+  detail: string | null
+  messageCount: number
+  unreadCount: number
+  totalBytes: number
+  newestAt: string
+  oldestAt: string
+  messageIds: string[]       // newest first
+  sampleMessageId: string    // most recent message, used for unsubscribe
+  unsubscribe: UnsubscribeOptions | null
+  /** A Gmail search that shows this group in the normal mail view, when one exists. */
+  searchQuery: string | null
+}
+
+export interface CleanupFilter {
+  olderThanDays: number | null
+  largerThanBytes: number | null
+  unreadOnly: boolean
+}
+
+export interface InboxInsights {
+  messageCount: number
+  unreadCount: number
+  totalBytes: number
+  subscriptionCount: number
+  topSenders: MailGroup[]
+  unopenedSubscriptions: MailGroup[]
+  largestSenders: MailGroup[]
+  oldestMessages: MessageMetadata[]
+}
+
+export interface MailboxAnalysis {
+  filter: CleanupFilter
+  groups: Record<GroupingKind, MailGroup[]>
+  insights: InboxInsights
+}
+
+export type BulkMessageAction = 'trash' | 'restore' | 'archive' | 'moveToInbox' | 'markRead' | 'markUnread'
+
+export type UnsubscribeMethod = 'one-click' | 'mailto' | 'link'
+
+export interface UnsubscribeResult {
+  method: UnsubscribeMethod
+  /** True when the app finished the unsubscribe itself; false means the user must visit `url`. */
+  completed: boolean
+  url: string | null
 }

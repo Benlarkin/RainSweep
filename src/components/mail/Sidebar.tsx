@@ -1,7 +1,7 @@
 'use client'
 
 import type { Account, MailLabel } from '@/types'
-import { KeyboardIcon, PencilIcon, LabelIcon, MailIcon } from '@/components/ui/Icons'
+import { BroomIcon, KeyboardIcon, PencilIcon, LabelIcon, MailIcon } from '@/components/ui/Icons'
 
 interface SidebarProps {
   account: Account
@@ -30,6 +30,10 @@ export function Sidebar(props: SidebarProps) {
       <ul className="space-y-0.5">
         {system.map(label => <LabelItem key={label.id} label={label} active={label.id === currentLabel} onSelect={onSelectLabel} />)}
       </ul>
+
+      <a href="/cleanup" className="mt-2 flex items-center gap-3 rounded-r-full px-3 py-1.5 text-sm hover:bg-surface-muted">
+        <BroomIcon width={18} height={18} /> <span className="flex-1">Clean up</span>
+      </a>
 
       {user.length > 0 && (
         <>

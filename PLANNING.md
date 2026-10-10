@@ -1,6 +1,6 @@
 # RainSweep — Planning
 
-## Phase 1 — Functional Gmail client (this PR)
+## Phase 1 — Functional Gmail client
 
 - [x] Google sign-in (OAuth code + PKCE), encrypted session, token refresh, sign-out with revoke
 - [x] Labels with unread counts
@@ -13,16 +13,26 @@
 - [x] Light and dark themes, responsive down to phone width
 - [x] Architecture test enforcing iDesign call rules
 
-## Phase 2 — Depth
+## Phase 2 — Mailbox cleanup (this PR)
+
+Modeled on Mailstrom's core features (see the feature-gap notes in the project files).
+
+- [x] Group by sender with bulk trash, archive and mark read, plus Undo
+- [x] One-click unsubscribe (RFC 8058), with mailto and link fallbacks, from Clean up and from any message
+- [x] Groupings by mailing list, recurring subject, size and age, combinable with size, age and unread filters
+- [x] Inbox insights: top senders, never-opened subscriptions, largest senders, oldest mail
+- [x] Multi-select and bulk actions in the mail view (`x` to select, `*` to select all, toolbar)
+- [ ] Deferred: block senders and Auto Clean rules (Gmail filters via `users.settings.filters`, behind a new `FilterAccessor` verb set)
+
+## Phase 3 — Depth
 
 - [ ] Gmail drafts sync (`DraftAccessor` verbs on `MailAccessor`)
 - [ ] Rich-text compose and signatures (`CompositionEngine`)
 - [ ] Forward with original attachments
 - [ ] Apply/remove user labels, move to label
 - [ ] Contacts autocomplete (People API behind a new `ContactsAccessor`)
-- [ ] Multi-select and bulk actions
 
-## Phase 3 — Real-time and multi-account
+## Phase 4 — Real-time and multi-account
 
 - [ ] Gmail push via Pub/Sub `users.watch` → Web Push (`NotificationManager`, `PushAccessor`), replacing polling
 - [ ] Server-side sessions in Supabase (swap `SessionAccessor` handlers), enabling multiple accounts

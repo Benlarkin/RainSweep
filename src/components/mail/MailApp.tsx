@@ -8,7 +8,7 @@ import { MailtoUtility } from '@/utilities/MailtoUtility'
 import { mailApi } from '@/lib/client/mailApi'
 import { clearOfflineMail } from '@/components/pwa/ServiceWorkerRegistration'
 import { Toast, type ToastState } from '@/components/ui/Toast'
-import { MenuIcon, RefreshIcon, SearchIcon } from '@/components/ui/Icons'
+import { ArchiveIcon, CloseIcon, MailIcon, MailOpenIcon, MenuIcon, RefreshIcon, SearchIcon, TrashIcon } from '@/components/ui/Icons'
 import { Sidebar } from './Sidebar'
 import { ThreadList } from './ThreadList'
 import { ThreadView } from './ThreadView'
@@ -16,6 +16,8 @@ import { ComposeDialog } from './ComposeDialog'
 import { ShortcutsHelp } from './ShortcutsHelp'
 import { useMailbox, type MailView } from './useMailbox'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
+import { confirmAndUnsubscribe } from './unsubscribe'
+import { AddressUtility } from '@/utilities/AddressUtility'
 import {
   clearLocalDraft, composeFromDraft, composeFromMailto, emptyCompose, fileToBase64, loadLocalDraft, type ComposeState,
 } from './composeState'
@@ -50,7 +52,7 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
   }, [])
 
   const mailbox = useMailbox(initialView, notify)
-  const { view, navigate, labels, list, thread, focusIndex, setFocusIndex, offline, act } = mailbox
+  const { view, navigate, labels, list, thread, focusIndex, setFocusIndex, offline, act, actMany, selected } = mailbox
 
   const [compose, setCompose] = useState<ComposeState | null>(() => initialCompose(composeRequest))
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -116,6 +118,22 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
     })
   }, [notify, view.threadId, mailbox])
 
+  const unsubscribe = useCallback(async (message: MailMessage) => {
+    const sender = message.from
+    const label = sender ? AddressUtility.displayName(sender) : 'this sender'
+    const result = await confirmAndUnsubscribe(message.id, label, (text, action, tone) =>
+      setToast({ id: Date.now(), message: text, tone, actionLabel: action?.label, onAction: action?.run, durationMs: 10_000 }))
+    if (result?.completed && sender) {
+      // Offer the natural follow-up: everything they already sent.
+      setToast({
+        id: Date.now(), durationMs: 10_000,
+        message: `Unsubscribed from ${label}.`,
+        actionLabel: 'Show their mail',
+        onAction: () => navigate({ search: `from:${sender.address}`, label: null, threadId: null }),
+      })
+    }
+  }, [navigate])
+
   // ── Navigation helpers ─────────────────────────────────────────────────────
 
   const openThread = useCallback((id: string) => navigate({ threadId: id }), [navigate])
@@ -133,7 +151,11 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
     if (view.threadId && list.threads[next]) openThread(list.threads[next].id)
   }
   const targetId = view.threadId ?? list.threads[focusIndex]?.id ?? null
-  const actOnTarget = (action: ThreadAction) => { if (targetId) void act(targetId, action) }
+  // With conversations checked, actions apply to all of them.
+  const actOnTarget = (action: ThreadAction) => {
+    if (!view.threadId && selected.size > 0) void actMany([...selected], action)
+    else if (targetId) void act(targetId, action)
+  }
   const lastMessage = thread.data?.messages[thread.data.messages.length - 1]
 
   useKeyboardShortcuts({
@@ -145,10 +167,18 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
     o: () => { if (list.threads[focusIndex]) openThread(list.threads[focusIndex].id) },
     Enter: () => { if (!view.threadId && list.threads[focusIndex]) openThread(list.threads[focusIndex].id) },
     u: backToList,
-    Escape: () => { if (showHelp) setShowHelp(false); else backToList() },
+    Escape: () => { if (showHelp) setShowHelp(false); else if (selected.size) mailbox.clearSelection(); else backToList() },
+    x: () => { const t = list.threads[focusIndex]; if (t && !view.threadId) mailbox.toggleSelected(t.id) },
+    '*': () => { if (selected.size) mailbox.clearSelection(); else mailbox.selectAll() },
+    'g c': () => { window.location.href = '/cleanup' },
     e: () => actOnTarget('archive'),
     '#': () => actOnTarget('trash'),
     s: () => {
+      if (!view.threadId && selected.size > 0) {
+        const anyUnstarred = list.threads.some(t => selected.has(t.id) && !t.starred)
+        void actMany([...selected], anyUnstarred ? 'star' : 'unstar')
+        return
+      }
       const t = list.threads.find(x => x.id === targetId)
       const starred = t?.starred ?? thread.data?.messages.some(m => m.starred) ?? false
       actOnTarget(starred ? 'unstar' : 'star')
@@ -232,11 +262,34 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
         <div className="flex min-h-0 flex-1">
           <section aria-label={heading}
             className={`min-w-0 flex-col border-border lg:flex lg:w-[400px] lg:flex-none lg:border-r ${view.threadId ? 'hidden' : 'flex flex-1'}`}>
-            <h2 className="px-4 pb-1 pt-3 text-sm font-semibold text-muted">{heading}</h2>
+            {selected.size > 0 ? (
+              <div role="toolbar" aria-label="Selected conversations" className="flex items-center gap-1 border-b border-border px-3 py-1.5">
+                <input type="checkbox" aria-label="Select all" checked={selected.size === list.threads.length}
+                  ref={el => { if (el) el.indeterminate = selected.size > 0 && selected.size < list.threads.length }}
+                  onChange={() => (selected.size === list.threads.length ? mailbox.clearSelection() : mailbox.selectAll())}
+                  className="mx-1 h-4 w-4 accent-[var(--accent)]" />
+                <span className="mr-auto text-sm font-medium">{selected.size} selected</span>
+                {view.label === 'TRASH'
+                  ? <BulkButton label="Restore" onClick={() => actOnTarget('restore')}><ArchiveIcon width={18} height={18} /></BulkButton>
+                  : <BulkButton label="Archive (e)" onClick={() => actOnTarget('archive')}><ArchiveIcon width={18} height={18} /></BulkButton>}
+                {view.label !== 'TRASH' && <BulkButton label="Delete (#)" onClick={() => actOnTarget('trash')}><TrashIcon width={18} height={18} /></BulkButton>}
+                <BulkButton label="Mark as read (Shift+I)" onClick={() => actOnTarget('markRead')}><MailOpenIcon width={18} height={18} /></BulkButton>
+                <BulkButton label="Mark as unread (Shift+U)" onClick={() => actOnTarget('markUnread')}><MailIcon width={18} height={18} /></BulkButton>
+                <BulkButton label="Clear selection (Esc)" onClick={mailbox.clearSelection}><CloseIcon width={18} height={18} /></BulkButton>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-4 pb-1 pt-3">
+                <input type="checkbox" aria-label="Select all" checked={false} disabled={list.threads.length === 0}
+                  onChange={mailbox.selectAll} className="h-4 w-4 accent-[var(--accent)] opacity-60 hover:opacity-100" />
+                <h2 className="text-sm font-semibold text-muted">{heading}</h2>
+              </div>
+            )}
             <div className="min-h-0 flex-1 overflow-y-auto">
               <ThreadList
                 threads={list.threads}
                 selectedId={view.threadId}
+                checkedIds={selected}
+                onToggleChecked={mailbox.toggleSelected}
                 focusIndex={focusIndex}
                 loading={list.loading}
                 loadingMore={list.loadingMore}
@@ -255,7 +308,7 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
           <section aria-label="Conversation" className={`min-w-0 flex-1 ${view.threadId ? 'block' : 'hidden lg:block'}`}>
             {view.threadId
               ? <ThreadView thread={thread.data} loading={thread.loading} error={thread.error} onBack={backToList}
-                  onAction={action => { if (view.threadId) void act(view.threadId, action) }} onRespond={respond} />
+                  onAction={action => { if (view.threadId) void act(view.threadId, action) }} onRespond={respond} onUnsubscribe={unsubscribe} />
               : <div className="flex h-full items-center justify-center text-sm text-muted">Select a conversation to read it.</div>}
           </section>
         </div>
@@ -268,5 +321,14 @@ export function MailApp({ account, initialView, composeRequest }: MailAppProps) 
       {showHelp && <ShortcutsHelp onClose={() => setShowHelp(false)} />}
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
+  )
+}
+
+function BulkButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" aria-label={label} title={label} onClick={onClick}
+      className="rounded-full p-2 text-muted transition hover:bg-surface-muted hover:text-foreground">
+      {children}
+    </button>
   )
 }

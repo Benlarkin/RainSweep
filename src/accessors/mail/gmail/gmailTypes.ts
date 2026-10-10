@@ -11,6 +11,7 @@ export interface GmailMessageMeta {
   labelIds: string[]
   snippet: string
   internalDate: string
+  sizeEstimate: number
   headers: GmailHeader[]
 }
 
@@ -46,6 +47,7 @@ export function readMessageMeta(value: unknown): GmailMessageMeta | null {
     labelIds: strArray(value.labelIds),
     snippet: str(value.snippet),
     internalDate: str(value.internalDate, '0'),
+    sizeEstimate: num(value.sizeEstimate),
     headers,
   }
 }

@@ -30,3 +30,14 @@ export class UpdateThreadResponse extends ResponseBase {
     super(correlationId, error)
   }
 }
+
+export class UpdateThreadsResponse extends ResponseBase {
+  constructor(
+    correlationId: string,
+    public readonly updatedIds: string[],
+    public readonly failedIds: string[],
+    error: Failure | null = null,
+  ) {
+    super(correlationId, error)
+  }
+}

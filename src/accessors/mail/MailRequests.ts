@@ -7,6 +7,9 @@ import type {
   LoadRawMessageResponse,
   SendMessageResponse,
   ThreadStateResponse,
+  LoadMessageMetadataPageResponse,
+  LoadMessageMetadataResponse,
+  MessagesStateResponse,
 } from './MailResponses'
 
 // Every request carries the caller's access token: the accessor is stateless
@@ -38,6 +41,22 @@ export class LoadRawMessageRequest extends MailRequestBase<LoadRawMessageRespons
   constructor(accessToken: string, public readonly messageId: string) { super(accessToken) }
 }
 
+export interface MetadataPageQuery {
+  labelId: string | null
+  search: string
+  pageToken: string | null
+  pageSize: number
+}
+
+/** Headers and size only, for many messages at once. Never loads bodies. */
+export class LoadMessageMetadataPageRequest extends MailRequestBase<LoadMessageMetadataPageResponse> {
+  constructor(accessToken: string, public readonly query: MetadataPageQuery) { super(accessToken) }
+}
+
+export class LoadMessageMetadataRequest extends MailRequestBase<LoadMessageMetadataResponse> {
+  constructor(accessToken: string, public readonly messageId: string) { super(accessToken) }
+}
+
 // ── store ─────────────────────────────────────────────────────────────────────
 
 export class SendMessageRequest extends MailRequestBase<SendMessageResponse> {
@@ -63,4 +82,18 @@ export class SetThreadReadRequest extends ThreadStateRequest {
 
 export class SetThreadStarredRequest extends ThreadStateRequest {
   constructor(accessToken: string, threadId: string, public readonly starred: boolean) { super(accessToken, threadId) }
+}
+
+// Bulk verbs over individual messages (any number; batched by the handler).
+abstract class MessagesStateRequest extends MailRequestBase<MessagesStateResponse> {
+  constructor(accessToken: string, public readonly messageIds: string[]) { super(accessToken) }
+}
+
+export class TrashMessagesRequest extends MessagesStateRequest {}
+export class RestoreMessagesFromTrashRequest extends MessagesStateRequest {}
+export class ArchiveMessagesRequest extends MessagesStateRequest {}
+export class MoveMessagesToInboxRequest extends MessagesStateRequest {}
+
+export class SetMessagesReadRequest extends MessagesStateRequest {
+  constructor(accessToken: string, messageIds: string[], public readonly read: boolean) { super(accessToken, messageIds) }
 }

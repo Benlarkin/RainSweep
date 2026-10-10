@@ -10,6 +10,14 @@ import { LoadThreadPageHandler } from '@/accessors/mail/handlers/LoadThreadPageH
 import { LoadThreadHandler } from '@/accessors/mail/handlers/LoadThreadHandler'
 import { LoadRawMessageHandler } from '@/accessors/mail/handlers/LoadRawMessageHandler'
 import { SendMessageHandler } from '@/accessors/mail/handlers/SendMessageHandler'
+import { LoadMessageMetadataHandler, LoadMessageMetadataPageHandler } from '@/accessors/mail/handlers/LoadMessageMetadataHandlers'
+import {
+  ArchiveMessagesHandler,
+  MoveMessagesToInboxHandler,
+  RestoreMessagesFromTrashHandler,
+  SetMessagesReadHandler,
+  TrashMessagesHandler,
+} from '@/accessors/mail/handlers/MessagesStateHandlers'
 import {
   ArchiveThreadHandler,
   MoveThreadToInboxHandler,
@@ -30,7 +38,19 @@ import {
   RestoreThreadFromTrashRequest,
   SetThreadReadRequest,
   SetThreadStarredRequest,
+  LoadMessageMetadataPageRequest,
+  LoadMessageMetadataRequest,
+  TrashMessagesRequest,
+  RestoreMessagesFromTrashRequest,
+  ArchiveMessagesRequest,
+  MoveMessagesToInboxRequest,
+  SetMessagesReadRequest,
 } from '@/accessors/mail/MailRequests'
+
+// Accessors — Subscription (RFC 8058 one-click unsubscribe)
+import { SubscriptionAccessor } from '@/accessors/subscription/SubscriptionAccessor'
+import { OneClickUnsubscribeHandler } from '@/accessors/subscription/handlers/OneClickUnsubscribeHandler'
+import { OneClickUnsubscribeRequest } from '@/accessors/subscription/SubscriptionRequests'
 
 // Accessors — Identity (Google OAuth)
 import { IdentityAccessor } from '@/accessors/identity/IdentityAccessor'
@@ -68,7 +88,14 @@ import {
 import { MessageParsingEngine } from '@/engines/messageParsing/MessageParsingEngine'
 import { ParseMessageHandler } from '@/engines/messageParsing/handlers/ParseMessageHandler'
 import { ExtractAttachmentHandler } from '@/engines/messageParsing/handlers/ExtractAttachmentHandler'
-import { ParseMessageRequest, ExtractAttachmentRequest } from '@/engines/messageParsing/MessageParsingEngineRequests'
+import { ParseMetadataHandler } from '@/engines/messageParsing/handlers/ParseMetadataHandler'
+import { ParseMessageRequest, ExtractAttachmentRequest, ParseMetadataRequest } from '@/engines/messageParsing/MessageParsingEngineRequests'
+
+// Engines — Grouping
+import { GroupingEngine } from '@/engines/grouping/GroupingEngine'
+import { GroupMessagesHandler } from '@/engines/grouping/handlers/GroupMessagesHandler'
+import { SummarizeInsightsHandler } from '@/engines/grouping/handlers/SummarizeInsightsHandler'
+import { GroupMessagesRequest, SummarizeInsightsRequest } from '@/engines/grouping/GroupingEngineRequests'
 
 // Engines — Composition
 import { CompositionEngine } from '@/engines/composition/CompositionEngine'
@@ -98,12 +125,14 @@ import { GetThreadsHandler } from '@/managers/mailbox/handlers/GetThreadsHandler
 import { GetThreadHandler } from '@/managers/mailbox/handlers/GetThreadHandler'
 import { GetAttachmentHandler } from '@/managers/mailbox/handlers/GetAttachmentHandler'
 import { UpdateThreadHandler } from '@/managers/mailbox/handlers/UpdateThreadHandler'
+import { UpdateThreadsHandler } from '@/managers/mailbox/handlers/UpdateThreadsHandler'
 import {
   GetLabelsRequest,
   GetThreadsRequest,
   GetThreadRequest,
   GetAttachmentRequest,
   UpdateThreadRequest,
+  UpdateThreadsRequest,
 } from '@/managers/mailbox/MailboxRequests'
 
 import { CompositionManager } from '@/managers/composition/CompositionManager'
@@ -112,11 +141,20 @@ import { GetComposeDraftHandler } from '@/managers/composition/handlers/GetCompo
 import { SendMailHandler } from '@/managers/composition/handlers/SendMailHandler'
 import { GetComposeDraftRequest, SendMailRequest } from '@/managers/composition/CompositionRequests'
 
+import { CleanupManager } from '@/managers/cleanup/CleanupManager'
+import type { ICleanupManager } from '@/managers/cleanup/ICleanupManager'
+import { ScanMailboxHandler } from '@/managers/cleanup/handlers/ScanMailboxHandler'
+import { AnalyzeMailboxHandler } from '@/managers/cleanup/handlers/AnalyzeMailboxHandler'
+import { ApplyBulkActionHandler } from '@/managers/cleanup/handlers/ApplyBulkActionHandler'
+import { UnsubscribeHandler } from '@/managers/cleanup/handlers/UnsubscribeHandler'
+import { ScanMailboxRequest, AnalyzeMailboxRequest, ApplyBulkActionRequest, UnsubscribeRequest } from '@/managers/cleanup/CleanupRequests'
+
 /** Clients see Managers only. */
 export interface Container {
   accountManager: IAccountManager
   mailboxManager: IMailboxManager
   compositionManager: ICompositionManager
+  cleanupManager: ICleanupManager
 }
 
 export interface ContainerOptions {
@@ -135,6 +173,8 @@ export function createContainer({ config, cookies, fetchFn = fetch }: ContainerO
       .register(LoadThreadPageRequest, new LoadThreadPageHandler(gmail))
       .register(LoadThreadRequest, new LoadThreadHandler(gmail))
       .register(LoadRawMessageRequest, new LoadRawMessageHandler(gmail))
+      .register(LoadMessageMetadataPageRequest, new LoadMessageMetadataPageHandler(gmail))
+      .register(LoadMessageMetadataRequest, new LoadMessageMetadataHandler(gmail))
       .build(),
     new HandlerResolverBuilder()
       .register(SendMessageRequest, new SendMessageHandler(gmail))
@@ -144,6 +184,17 @@ export function createContainer({ config, cookies, fetchFn = fetch }: ContainerO
       .register(RestoreThreadFromTrashRequest, new RestoreThreadFromTrashHandler(gmail))
       .register(SetThreadReadRequest, new SetThreadReadHandler(gmail))
       .register(SetThreadStarredRequest, new SetThreadStarredHandler(gmail))
+      .register(TrashMessagesRequest, new TrashMessagesHandler(gmail))
+      .register(RestoreMessagesFromTrashRequest, new RestoreMessagesFromTrashHandler(gmail))
+      .register(ArchiveMessagesRequest, new ArchiveMessagesHandler(gmail))
+      .register(MoveMessagesToInboxRequest, new MoveMessagesToInboxHandler(gmail))
+      .register(SetMessagesReadRequest, new SetMessagesReadHandler(gmail))
+      .build(),
+  )
+
+  const subscriptionAccessor = new SubscriptionAccessor(
+    new HandlerResolverBuilder()
+      .register(OneClickUnsubscribeRequest, new OneClickUnsubscribeHandler(fetchFn))
       .build(),
   )
 
@@ -188,6 +239,14 @@ export function createContainer({ config, cookies, fetchFn = fetch }: ContainerO
     new HandlerResolverBuilder()
       .register(ParseMessageRequest, new ParseMessageHandler())
       .register(ExtractAttachmentRequest, new ExtractAttachmentHandler())
+      .register(ParseMetadataRequest, new ParseMetadataHandler())
+      .build(),
+  )
+
+  const groupingEngine = new GroupingEngine(
+    new HandlerResolverBuilder()
+      .register(GroupMessagesRequest, new GroupMessagesHandler())
+      .register(SummarizeInsightsRequest, new SummarizeInsightsHandler())
       .build(),
   )
 
@@ -217,6 +276,7 @@ export function createContainer({ config, cookies, fetchFn = fetch }: ContainerO
   const mailboxManager = new MailboxManager(
     new HandlerResolverBuilder()
       .register(UpdateThreadRequest, new UpdateThreadHandler(activeSession, mailAccessor))
+      .register(UpdateThreadsRequest, new UpdateThreadsHandler(activeSession, mailAccessor))
       .build(),
     new HandlerResolverBuilder()
       .register(GetLabelsRequest, new GetLabelsHandler(activeSession, mailAccessor))
@@ -235,5 +295,16 @@ export function createContainer({ config, cookies, fetchFn = fetch }: ContainerO
       .build(),
   )
 
-  return { accountManager, mailboxManager, compositionManager }
+  const cleanupManager = new CleanupManager(
+    new HandlerResolverBuilder()
+      .register(ApplyBulkActionRequest, new ApplyBulkActionHandler(activeSession, mailAccessor))
+      .register(UnsubscribeRequest, new UnsubscribeHandler(activeSession, mailAccessor, subscriptionAccessor, parsingEngine, compositionEngine))
+      .build(),
+    new HandlerResolverBuilder()
+      .register(ScanMailboxRequest, new ScanMailboxHandler(activeSession, mailAccessor, parsingEngine))
+      .register(AnalyzeMailboxRequest, new AnalyzeMailboxHandler(activeSession, groupingEngine))
+      .build(),
+  )
+
+  return { accountManager, mailboxManager, compositionManager, cleanupManager }
 }

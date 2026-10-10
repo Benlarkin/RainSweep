@@ -1,4 +1,6 @@
-import type { Account, ComposeDraft, MailAddress, MailLabel, MailThread, ThreadPage } from '@/types'
+import type {
+  Account, BulkMessageAction, CleanupFilter, ComposeDraft, MailAddress, MailLabel, MailThread, MailboxAnalysis, MessageMetadata, ThreadPage, UnsubscribeResult,
+} from '@/types'
 import type { ThreadAction } from '@/managers/mailbox/MailboxRequests'
 import type { DraftMode } from '@/managers/composition/CompositionRequests'
 
@@ -71,7 +73,25 @@ export const mailApi = {
   },
   send: (payload: SendPayload) =>
     request<{ messageId: string; threadId: string }>('/api/send', { method: 'POST', body: JSON.stringify(payload) }),
+  updateThreads: (threadIds: string[], action: ThreadAction) =>
+    request<{ updatedIds: string[]; failedIds: string[] }>('/api/threads/actions', {
+      method: 'POST',
+      body: JSON.stringify({ threadIds, action }),
+    }),
   signOut: () => request<void>('/api/auth/signout', { method: 'POST' }),
+
+  // Cleanup
+  scan: (scope: 'all' | 'inbox', pageToken: string | null) => {
+    const params = new URLSearchParams({ scope })
+    if (pageToken) params.set('pageToken', pageToken)
+    return request<{ messages: MessageMetadata[]; nextPageToken: string | null; resultSizeEstimate: number }>(`/api/cleanup/scan?${params}`)
+  },
+  analyze: (messages: MessageMetadata[], filter: CleanupFilter) =>
+    request<{ analysis: MailboxAnalysis }>('/api/cleanup/analyze', { method: 'POST', body: JSON.stringify({ messages, filter }) }),
+  bulkAction: (messageIds: string[], action: BulkMessageAction) =>
+    request<{ updatedCount: number }>('/api/cleanup/actions', { method: 'POST', body: JSON.stringify({ messageIds, action }) }),
+  unsubscribe: (messageId: string) =>
+    request<{ result: UnsubscribeResult }>('/api/cleanup/unsubscribe', { method: 'POST', body: JSON.stringify({ messageId }) }),
   attachmentUrl: (messageId: string, index: number, inline = false) =>
     `/api/messages/${encodeURIComponent(messageId)}/attachments/${index}${inline ? '?inline=1' : ''}`,
 }

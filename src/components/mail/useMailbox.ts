@@ -76,6 +76,7 @@ export function useMailbox(initialView: MailView, notify: (message: string, undo
   const [list, setList] = useState<ListState>({ threads: [], nextPageToken: null, loading: true, loadingMore: false, error: null })
   const [thread, setThread] = useState<ThreadState>({ data: null, loading: false, error: null })
   const [focusIndex, setFocusIndex] = useState(0)
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [offline, setOffline] = useState(false)
   const listRequest = useRef(0)
   const seenUnread = useRef<Set<string> | null>(null)
@@ -146,7 +147,10 @@ export function useMailbox(initialView: MailView, notify: (message: string, undo
           error: null,
         }
       })
-      if (!silent) setFocusIndex(0)
+      if (!silent) {
+        setFocusIndex(0)
+        setSelected(new Set())
+      }
       announceNewMail(page.threads)
     } catch (err) {
       if (requestId !== listRequest.current) return
@@ -236,29 +240,43 @@ export function useMailbox(initialView: MailView, notify: (message: string, undo
 
   // ── Actions (optimistic, undoable) ─────────────────────────────────────────
 
-  const act = useCallback(async (threadId: string, action: ThreadAction, options: { silentUndo?: boolean } = {}) => {
+  const actMany = useCallback(async (threadIds: string[], action: ThreadAction) => {
+    if (threadIds.length === 0) return
+    const ids = new Set(threadIds)
     const before = list.threads
-    const index = before.findIndex(t => t.id === threadId)
     const removed = removesFromView(action, view.label)
 
     setList(prev => ({
       ...prev,
       threads: removed
-        ? prev.threads.filter(t => t.id !== threadId)
-        : prev.threads.map(t => (t.id === threadId ? applyToSummary(t, action) : t)),
+        ? prev.threads.filter(t => !ids.has(t.id))
+        : prev.threads.map(t => (ids.has(t.id) ? applyToSummary(t, action) : t)),
     }))
-    if (removed && view.threadId === threadId) navigate({ threadId: null })
-    if (removed && index >= 0) setFocusIndex(i => Math.min(i, Math.max(0, before.length - 2)))
+    setSelected(new Set())
+    if (removed && view.threadId && ids.has(view.threadId)) navigate({ threadId: null })
+    if (removed) setFocusIndex(i => Math.min(i, Math.max(0, before.length - ids.size - 1)))
 
     try {
-      await mailApi.updateThread(threadId, action)
+      const single = threadIds.length === 1
+      if (single) await mailApi.updateThread(threadIds[0], action)
+      else {
+        const { failedIds } = await mailApi.updateThreads(threadIds, action)
+        if (failedIds.length) notify(`${failedIds.length} of ${threadIds.length} conversations didn’t update.`, undefined, 'error')
+      }
       void refreshLabels()
       const undoAction = UNDO[action]
-      const message = ({ archive: 'Conversation archived', trash: 'Moved to Trash', markUnread: 'Marked as unread' } as Partial<Record<ThreadAction, string>>)[action]
-      if (message && undoAction && !options.silentUndo) {
+      const noun = single ? 'Conversation' : `${threadIds.length} conversations`
+      const message = ({
+        archive: `${noun} archived`,
+        trash: single ? 'Moved to Trash' : `${noun} moved to Trash`,
+        markUnread: single ? 'Marked as unread' : `${noun} marked as unread`,
+        markRead: single ? undefined : `${noun} marked as read`,
+      } as Partial<Record<ThreadAction, string | undefined>>)[action]
+      if (message && undoAction) {
         notify(message, () => {
-          setList(prev => (prev.threads.some(t => t.id === threadId) ? prev : { ...prev, threads: before }))
-          void mailApi.updateThread(threadId, undoAction).then(() => refreshLabels())
+          setList(prev => ({ ...prev, threads: before }))
+          const restore = single ? mailApi.updateThread(threadIds[0], undoAction) : mailApi.updateThreads(threadIds, undoAction)
+          void restore.then(() => refreshLabels())
         })
       }
     } catch (err) {
@@ -267,8 +285,24 @@ export function useMailbox(initialView: MailView, notify: (message: string, undo
     }
   }, [list.threads, view.label, view.threadId, navigate, refreshLabels, notify])
 
+  const act = useCallback((threadId: string, action: ThreadAction) => actMany([threadId], action), [actMany])
+
+  // ── Selection (multi-select) ───────────────────────────────────────────────
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+  const selectAll = useCallback(() => setSelected(new Set(list.threads.map(t => t.id))), [list.threads])
+  const clearSelection = useCallback(() => setSelected(new Set()), [])
+
   return {
     view, navigate, labels, list, thread, focusIndex, setFocusIndex, offline,
-    loadMore, refresh: () => { void refreshLabels(); void loadList() }, reloadThread: loadThread, act,
+    loadMore, refresh: () => { void refreshLabels(); void loadList() }, reloadThread: loadThread, act, actMany,
+    selected, toggleSelected, selectAll, clearSelection,
   }
 }

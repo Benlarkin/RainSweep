@@ -78,6 +78,7 @@ export function mailMessage(overrides: Partial<MailMessage> = {}): MailMessage {
     labelIds: ['INBOX'],
     unread: false,
     starred: false,
+    unsubscribe: null,
     ...overrides,
   }
 }

@@ -10,6 +10,7 @@ import { ArchiveIcon, StarIcon, TrashIcon, MailIcon, MailOpenIcon } from '@/comp
 interface ThreadListProps {
   threads: ThreadSummary[]
   selectedId: string | null
+  checkedIds: Set<string>
   focusIndex: number
   loading: boolean
   loadingMore: boolean
@@ -18,6 +19,7 @@ interface ThreadListProps {
   emptyMessage: string
   onOpen: (id: string) => void
   onFocus: (index: number) => void
+  onToggleChecked: (id: string) => void
   onAction: (id: string, action: ThreadAction) => void
   onLoadMore: () => void
   onRetry: () => void
@@ -70,14 +72,19 @@ export function ThreadList(props: ThreadListProps) {
       <ul role="listbox" aria-label="Conversations" className="divide-y divide-border">
         {threads.map((thread, index) => {
           const selected = thread.id === selectedId
+          const checked = props.checkedIds.has(thread.id)
+          const selecting = props.checkedIds.size > 0
           const focused = index === focusIndex
           const names = thread.participants.map(AddressUtility.displayName)
           return (
             <li key={thread.id} ref={focused ? focusedRow : undefined} role="option" aria-selected={selected}
               className={`group relative flex cursor-pointer items-start gap-3 px-4 py-3 transition ${
-                selected ? 'bg-selected' : focused ? 'bg-surface-muted' : 'hover:bg-surface-muted'
+                selected || checked ? 'bg-selected' : focused ? 'bg-surface-muted' : 'hover:bg-surface-muted'
               } ${focused ? 'shadow-[inset_3px_0_0_var(--accent)]' : ''}`}
-              onClick={() => { props.onFocus(index); props.onOpen(thread.id) }}>
+              onClick={() => { props.onFocus(index); if (selecting) props.onToggleChecked(thread.id); else props.onOpen(thread.id) }}>
+              <input type="checkbox" checked={checked} aria-label={`Select conversation: ${thread.subject || '(no subject)'}`}
+                onClick={e => e.stopPropagation()} onChange={() => props.onToggleChecked(thread.id)}
+                className={`mt-1 h-4 w-4 shrink-0 accent-[var(--accent)] ${selecting ? '' : 'opacity-40 group-hover:opacity-100'}`} />
               <button type="button" aria-label={thread.starred ? 'Unstar' : 'Star'} aria-pressed={thread.starred}
                 onClick={e => { e.stopPropagation(); props.onAction(thread.id, thread.starred ? 'unstar' : 'star') }}
                 className={`mt-0.5 shrink-0 ${thread.starred ? 'text-amber-400' : 'text-muted opacity-60 hover:opacity-100'}`}>
